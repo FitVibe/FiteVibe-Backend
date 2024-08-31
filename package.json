@@ -1,0 +1,38 @@
+{
+  "name": "fitevibe-backend",
+  "version": "1.0.0",
+  "description": "This is the backend API of FiteVibe project which is a gym app.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon --ignore dist/ --exec \"tsc && ts-node -r tsconfig-paths/register app/index.ts\"",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/app/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/express-fileupload": "^1.5.1",
+    "@types/node": "^22.5.1",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-fileupload": "^1.5.1",
+    "mime-types": "^2.1.35",
+    "module-alias": "^2.2.3",
+    "mongoose": "^8.6.0",
+    "nodemon": "^3.1.4",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/express": "^4.17.21",
+    "@types/mime-types": "^2.1.4",
+    "@types/mongoose": "^5.11.97",
+    "tsconfig-paths": "^4.2.0"
+  },
+  "_moduleAliases": {
+    "@": "dist/"
+  }
+}
