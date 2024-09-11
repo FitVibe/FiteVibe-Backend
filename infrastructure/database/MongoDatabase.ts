@@ -1,4 +1,5 @@
-import mongoose,  { Document, IfAny, Model, RootFilterQuery } from 'mongoose';
+import mongoose, { Document, IfAny, Model, RootFilterQuery, ConnectOptions } from 'mongoose';
+import 'dotenv/config';
 
 export class MongoDBDatabase {
     constructor() {
@@ -7,7 +8,10 @@ export class MongoDBDatabase {
 
     async connect(): Promise<void> {
         try {
-            await mongoose.connect(process.env.MONGO_URI, {});
+            await mongoose.connect(process.env.MONGO_URI as string, {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+            } as ConnectOptions);
             console.log('Connected to MongoDB');
         } catch (err) {
             console.error('Error connecting to MongoDB:', err);
@@ -45,7 +49,7 @@ export class MongoDBDatabase {
         filter: RootFilterQuery<T>,
         update: Partial<T>,
         options: Record<string, unknown> = {}
-    ): Promise<IfAny<T,T> | null> {
+    ): Promise<IfAny<T, T> | null> {
         try {
             const result = await model.findOneAndUpdate(filter, update, { new: true, ...options });
             return result;
@@ -58,7 +62,7 @@ export class MongoDBDatabase {
     public async delete<T extends Document>(
         model: Model<T>,
         filter: RootFilterQuery<T>
-    ): Promise<IfAny<T,T> | null> {
+    ): Promise<IfAny<T, T> | null> {
         try {
             const result = await model.findOneAndDelete(filter);
             return result;

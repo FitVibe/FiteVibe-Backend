@@ -1,6 +1,7 @@
 import express from 'express';
 import fileUpload from 'express-fileupload';
 import apiRouter from "./routes/index";
+import 'dotenv/config';
 
 const app = express();
 const port = process.env.PORT;
