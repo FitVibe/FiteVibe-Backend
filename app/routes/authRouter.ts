@@ -5,5 +5,7 @@ const router = Router()
 
 router.post("/sign_up", authController.signup)
 router.post("/sign_in", authController.signin)
+router.post("/sign_out", authController.logout)
+router.get("/current_user", authController.currentUser)
 
 export default router;

@@ -1,5 +1,6 @@
 import express from 'express';
 import fileUpload from 'express-fileupload';
+import session from 'express-session';
 import passport from 'passport';
 import apiRouter from "./routes/index";
 import 'dotenv/config';
@@ -10,7 +11,14 @@ const port = process.env.PORT;
 
 app.use(fileUpload());
 app.use(express.json());
+
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'fitvibe_secret_key',
+    resave: false,
+    saveUninitialized: false,
+}));
 app.use(passport.initialize());
+app.use(passport.session());
 
 app.use('/api', apiRouter);
 

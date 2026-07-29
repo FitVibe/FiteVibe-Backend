@@ -59,7 +59,7 @@ export default class AuthController {
             return;
         }
 
-        passport.authenticate('local', { session: false }, (err: any, user: any, info: any) => {
+        passport.authenticate('local', (err: any, user: any, info: any) => {
             if (err) {
                 return next(err);  
             }
@@ -67,8 +67,29 @@ export default class AuthController {
                 return res.status(401).json({ status: "error", message: info ? info.message : "Invalid credentials" });
             }
     
-            // Respond with user details
-            return res.status(200).json({ status: "success", data: user });
+            req.logIn(user, (loginErr: any) => {
+                if (loginErr) {
+                    return next(loginErr);
+                }
+                return res.status(200).json({ status: "success", data: user });
+            });
         })(req, res, next);
+    }
+
+    logout = async (req: Request, res: Response, next: any): Promise<void> => {
+        req.logout((err: any) => {
+            if (err) {
+                return next(err);
+            }
+            res.status(200).json({ status: "success", message: "Logged out successfully" });
+        });
+    }
+
+    currentUser = async (req: Request, res: Response): Promise<void> => {
+        if (!req.user || (req.isAuthenticated && !req.isAuthenticated())) {
+            res.status(401).json({ status: "error", message: "Not authenticated" });
+            return;
+        }
+        res.status(200).json({ status: "success", data: req.user });
     }
 }

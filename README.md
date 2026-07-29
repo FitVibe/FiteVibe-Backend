@@ -14,6 +14,8 @@ FitVibe is a fitness and gym management backend API built with Node.js, Express,
 - [API Endpoints](#-api-endpoints)
   - [Sign Up](#1-sign-up)
   - [Sign In](#2-sign-in)
+  - [Current User](#3-current-user)
+  - [Logout](#4-logout)
 - [Project Structure](#-project-structure)
 
 ---
@@ -204,6 +206,65 @@ Authenticates user credentials using Passport Local Strategy.
       }
     }
   }
+}
+```
+
+---
+
+### 3. Current User
+Retrieves the currently authenticated user's session data.
+
+- **Method**: `GET`
+- **URL**: `http://localhost:3000/api/auth/current_user`
+- **Success Response (200 OK)**:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "_id": "66a80b1e123456789abcdef0",
+    "username": "john_doe",
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "account_type": "client",
+    "age": 25,
+    "gender": "male",
+    "client": {
+      "weight": 75,
+      "height": 180,
+      "fats": "15",
+      "personal_goals": {
+        "goal": "Weight loss",
+        "weight_goal": 70
+      }
+    }
+  }
+}
+```
+
+- **Unauthenticated Response (401 Unauthorized)**:
+
+```json
+{
+  "status": "error",
+  "message": "Not authenticated"
+}
+```
+
+---
+
+### 4. Logout
+Logs out the current authenticated user and terminates the session.
+
+- **Method**: `POST`
+- **URL**: `http://localhost:3000/api/auth/logout`
+- **Success Response (200 OK)**:
+
+```json
+{
+  "status": "success",
+  "message": "Logged out successfully"
 }
 ```
 
