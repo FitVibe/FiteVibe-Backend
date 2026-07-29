@@ -5,12 +5,10 @@ export const clientSchema = new Schema<ClientEntity>({
     weight: {
         type: Number,
         required: true,
-        unique: true,
     },
     height: {
         type: Number,
         required: true,
-        unique: true,
     },
     fats:
     {

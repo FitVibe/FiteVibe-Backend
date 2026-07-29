@@ -1,7 +1,7 @@
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 
 interface UserEntity extends Document {
-    _id?: string;
+    _id?: Types.ObjectId;
     email: string;
     account_type: AccountType;
     username: string;

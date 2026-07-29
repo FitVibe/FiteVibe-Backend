@@ -2,16 +2,20 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import UserService from "../services/UserService";
 import UserValidator from "@/infrastructure/validators/UserValidator";
+import CredentialsValidator from "@/infrastructure/validators/CredentialsValidator";
 import { UserEntity } from "@/domain/entities/UserEntity";
 import { ValidatorResult } from '@/domain/validator/ValidatorResult';
+import passport from "passport";
 
 export default class AuthController {
     userService: UserService;
     userValidator: UserValidator;
+    credentialsValidator: CredentialsValidator
 
-    constructor(userService: UserService, userValidator: UserValidator) {
+    constructor(userService: UserService, userValidator: UserValidator, credentialsValidator: CredentialsValidator) {
         this.userService = userService;
         this.userValidator = userValidator;
+        this.credentialsValidator = credentialsValidator;
     }
 
     signup = async (req: Request, res: Response): Promise<void> => {
@@ -44,5 +48,27 @@ export default class AuthController {
         }
 
         res.status(200).json({ status: "success", data: create_user });
+    }
+
+    signin = async (req: Request, res: Response, next: any): Promise<void> => {
+        const credentials: CredentialsInterface = req.body
+        const result: ValidatorResult = this.credentialsValidator.validate(credentials);
+
+        if (!result.is_valid) {
+            res.status(200).json({ status: "error", message: "missing properties", errors: result.messages });
+            return;
+        }
+
+        passport.authenticate('local', { session: false }, (err: any, user: any, info: any) => {
+            if (err) {
+                return next(err);  
+            }
+            if (!user) {
+                return res.status(401).json({ status: "error", message: info ? info.message : "Invalid credentials" });
+            }
+    
+            // Respond with user details
+            return res.status(200).json({ status: "success", data: user });
+        })(req, res, next);
     }
 }

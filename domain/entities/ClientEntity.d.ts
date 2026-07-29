@@ -1,7 +1,7 @@
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 
 interface ClientEntity extends Document {
-    _id?: String;
+    _id?: Types.ObjectId;
     weight: Number;
     height: Number;
     fats: Number;

@@ -15,31 +15,13 @@ export default class UserService {
     }
 
     async createUser(user: Partial<UserEntity>): Promise<any> {
-        let restOfObject: Partial<ClientEntity> = {};
-
-        if (user.account_type === 'client') {
-            restOfObject = user.client; 
-        } else if (user.account_type === 'coach') {
-            // TODO: Handle coach logic
-        } else if (user.account_type === 'admin') {
-            // TODO: Handle admin logic
-        }
-
-        // Insert the user into the database
+        // Insert the user (including embedded client/coach data) into the database
         const create_user = await this.mongoDBDatabase.insert(this.userModel as Model<any>, user);
-
-        if (create_user && user.account_type === 'client') {
-            // Insert the client data
-            return await this.mongoDBDatabase.insert(this.clientModel as Model<any>, restOfObject);
-        } else if (user.account_type === 'coach') {
-            // TODO: same operations
-        } else {
-            // TODO: same operations
-        }
+        return create_user;
     }
 
-    async getUserByEmail(email: string): Promise<UserEntity | null> {
-        const filter = { email };
+    async getUserByEmail(email: string, include_password?: boolean): Promise<UserEntity | null> {
+        const filter = { email, include_password };
         const result = await this.mongoDBDatabase.query(this.userModel as Model<any>, filter);
 
         return result && result.length > 0 ? result[0] : null;
