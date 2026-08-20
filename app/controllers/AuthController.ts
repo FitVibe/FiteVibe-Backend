@@ -86,10 +86,6 @@ export default class AuthController {
     }
 
     currentUser = async (req: Request, res: Response): Promise<void> => {
-        if (!req.user || (req.isAuthenticated && !req.isAuthenticated())) {
-            res.status(401).json({ status: "error", message: "Not authenticated" });
-            return;
-        }
         res.status(200).json({ status: "success", data: req.user });
     }
 }
