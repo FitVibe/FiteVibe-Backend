@@ -9,6 +9,7 @@ interface UserEntity extends Document {
     first_name: string;
     last_name: string;
     profile_image?: string;
+    fcm_device_token?: string;
     city: string;
     country: string;
     age: number;

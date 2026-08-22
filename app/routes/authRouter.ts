@@ -8,5 +8,6 @@ router.post("/sign_up", authController.signup)
 router.post("/sign_in", authController.signin)
 router.post("/sign_out", authController.logout)
 router.get("/current_user", isAuthenticated, authController.currentUser)
+router.patch("/fcm-token", isAuthenticated, authController.updateFcmToken)
 
 export default router;

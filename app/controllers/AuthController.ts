@@ -88,4 +88,17 @@ export default class AuthController {
     currentUser = async (req: Request, res: Response): Promise<void> => {
         res.status(200).json({ status: "success", data: req.user });
     }
+
+    updateFcmToken = async (req: Request, res: Response): Promise<void> => {
+        const { fcm_token } = req.body;
+
+        if (!fcm_token || typeof fcm_token !== 'string') {
+            res.status(400).json({ status: "error", message: "fcm_token is required" });
+            return;
+        }
+
+        const user = req.user as any;
+        await this.userService.updateFcmToken(user._id.toString(), fcm_token);
+        res.status(200).json({ status: "success", message: "FCM token updated" });
+    }
 }

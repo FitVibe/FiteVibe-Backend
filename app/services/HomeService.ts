@@ -2,14 +2,17 @@ import { MongoDBDatabase } from "@/infrastructure/database/MongoDatabase";
 import { Model } from "mongoose";
 import { DailyLoginEntity } from "@/domain/entities/DailyLoginEntity";
 import { Types } from "mongoose";
+import WaterService from "./WaterService";
 
 export default class HomeService {
     private db: MongoDBDatabase;
     private dailyLoginModel: Model<DailyLoginEntity>;
+    private waterService: WaterService;
 
-    constructor(db: MongoDBDatabase, dailyLoginModel: Model<DailyLoginEntity>) {
+    constructor(db: MongoDBDatabase, dailyLoginModel: Model<DailyLoginEntity>, waterService: WaterService) {
         this.db = db;
         this.dailyLoginModel = dailyLoginModel;
+        this.waterService = waterService;
     }
 
     public async getHomeData(userId: string) {
@@ -57,11 +60,15 @@ export default class HomeService {
             // If diffDays === 0, already logged in today, do nothing.
         }
 
+        // Fetch water section data
+        const water = await this.waterService.getWaterHomeData(userId);
+
         return {
             dailyLogin: {
                 streakCount: dailyLogin?.streakCount || 1,
                 lastLoginDate: dailyLogin?.lastLoginDate || todayMidnight
-            }
+            },
+            water,
         };
     }
 }

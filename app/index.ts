@@ -5,6 +5,8 @@ import passport from 'passport';
 import apiRouter from "./routes/index";
 import 'dotenv/config';
 import "@/infrastructure/passport_js/passport.config";
+import { startWaterReminderProducer } from "@/infrastructure/kafka/waterReminderProducer";
+import { startWaterReminderConsumer } from "@/infrastructure/kafka/waterReminderConsumer";
 
 const app = express();
 const port = process.env.PORT;
@@ -26,7 +28,16 @@ app.get('/', (req, res) => {
     res.send('Hello, world!');
 });
 
-app.listen(port, () => {
-    console.log(`Server listening   
+app.listen(port, async () => {
+    console.log(`Server listening   
     on port ${port}`);
+
+    // Start Kafka water reminder pipeline
+    try {
+        await startWaterReminderProducer();
+        await startWaterReminderConsumer();
+        console.log('[Kafka] Water reminder pipeline started.');
+    } catch (err) {
+        console.error('[Kafka] Failed to start reminder pipeline:', err);
+    }
 });

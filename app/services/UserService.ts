@@ -33,4 +33,10 @@ export default class UserService {
 
         return result && result.length > 0 ? result[0] : null;
     }
+
+    async updateFcmToken(userId: string, fcmToken: string): Promise<void> {
+        await this.userModel.findByIdAndUpdate(userId, {
+            $set: { fcm_device_token: fcmToken },
+        });
+    }
 }

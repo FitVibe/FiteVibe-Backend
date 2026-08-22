@@ -38,6 +38,11 @@ const userSchema = new Schema<UserEntity>({
         type: String,
         required: false,
     },
+    fcm_device_token:
+    {
+        type: String,
+        required: false,
+    },
     city:
     {
         type: String,
