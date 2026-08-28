@@ -12,4 +12,5 @@ export const kafka = new Kafka({
 
 export const TOPICS = {
     WATER_REMINDERS: 'water-reminders',
+    WORKOUT_REMINDERS: 'workout-reminders',
 } as const;

@@ -16,3 +16,22 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+
+  minio:
+    image: minio/minio:latest
+    container_name: fitvibe-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+
+  mongo:
+    image: mongo:latest
+    container_name: fitvibe-mongo
+    ports:
+      - "27017:27017"
+
+

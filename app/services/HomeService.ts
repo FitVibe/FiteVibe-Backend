@@ -1,17 +1,29 @@
 import { MongoDBDatabase } from "@/infrastructure/database/MongoDatabase";
 import { Model } from "mongoose";
 import { DailyLoginEntity } from "@/domain/entities/DailyLoginEntity";
+import { DailyTrainingPlannerEntity } from "@/domain/entities/DailyTrainingPlannerEntity";
+import { WorkoutEntity } from "@/domain/entities/WorkoutEntity";
 import { Types } from "mongoose";
 import WaterService from "./WaterService";
 
 export default class HomeService {
     private db: MongoDBDatabase;
     private dailyLoginModel: Model<DailyLoginEntity>;
+    private dailyTrainingPlannerModel: Model<DailyTrainingPlannerEntity>;
+    private workoutModel: Model<WorkoutEntity>;
     private waterService: WaterService;
 
-    constructor(db: MongoDBDatabase, dailyLoginModel: Model<DailyLoginEntity>, waterService: WaterService) {
+    constructor(
+        db: MongoDBDatabase,
+        dailyLoginModel: Model<DailyLoginEntity>,
+        dailyTrainingPlannerModel: Model<DailyTrainingPlannerEntity>,
+        workoutModel: Model<WorkoutEntity>,
+        waterService: WaterService
+    ) {
         this.db = db;
         this.dailyLoginModel = dailyLoginModel;
+        this.dailyTrainingPlannerModel = dailyTrainingPlannerModel;
+        this.workoutModel = workoutModel;
         this.waterService = waterService;
     }
 
@@ -22,6 +34,7 @@ export default class HomeService {
         const now = new Date();
         // Normalize 'now' to midnight UTC
         const todayMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const tomorrowMidnight = new Date(todayMidnight.getTime() + 24 * 60 * 60 * 1000);
 
         if (!dailyLogin) {
             // First time login
@@ -57,11 +70,61 @@ export default class HomeService {
                     }
                 )) as any;
             }
-            // If diffDays === 0, already logged in today, do nothing.
         }
 
         // Fetch water section data
         const water = await this.waterService.getWaterHomeData(userId);
+
+        // Fetch Daily Training Planner for today
+        const userObjId = new Types.ObjectId(userId);
+        
+        // Priority 1: Specific planner for this client for today
+        let planner = await this.dailyTrainingPlannerModel.findOne({
+            userId: userObjId,
+            date: { $gte: todayMidnight, $lt: tomorrowMidnight }
+        }).populate('exercises.workoutId');
+
+        // Priority 2: General/Free planner for today
+        if (!planner) {
+            planner = await this.dailyTrainingPlannerModel.findOne({
+                $or: [{ userId: { $exists: false } }, { userId: null }],
+                date: { $gte: todayMidnight, $lt: tomorrowMidnight }
+            }).populate('exercises.workoutId');
+        }
+
+        // Priority 3: Fallback to any latest free planner
+        if (!planner) {
+            planner = await this.dailyTrainingPlannerModel.findOne({ isFree: true })
+                .sort({ date: -1 })
+                .populate('exercises.workoutId');
+        }
+
+        let trainingDay = null;
+
+        if (planner) {
+            trainingDay = {
+                plannerId: planner._id,
+                name: planner.name,
+                isFree: planner.isFree,
+                exercisesCount: planner.exercises ? planner.exercises.length : 0,
+                totalTime: planner.duration, // total time in minutes
+                isCompleted: planner.isCompleted || false,
+                date: planner.date,
+                exercises: planner.exercises.map((item: any) => ({
+                    workoutId: item.workoutId?._id || item.workoutId,
+                    name: item.workoutId?.name || 'Workout Exercise',
+                    category: item.workoutId?.category || '',
+                    difficulty: item.workoutId?.difficulty || '',
+                    video: item.workoutId?.video || '',
+                    description: item.workoutId?.description || '',
+                    place: item.workoutId?.place || '',
+                    duration: item.duration,
+                    repeatition: item.repeatition,
+                    sets: item.sets,
+                    kilos: item.kilos
+                }))
+            };
+        }
 
         return {
             dailyLogin: {
@@ -69,6 +132,7 @@ export default class HomeService {
                 lastLoginDate: dailyLogin?.lastLoginDate || todayMidnight
             },
             water,
+            trainingDay,
         };
     }
 }

@@ -1,0 +1,244 @@
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
+import 'dotenv/config';
+import { initMinioBucket, uploadFile, getObjectUrl } from '../infrastructure/minio/minioClient';
+import Workout from '../infrastructure/database/models/workoutModel';
+import DailyTrainingPlanner from '../infrastructure/database/models/dailyTrainingPlannerModel';
+import User from '../infrastructure/database/models/userModel';
+import UserSettings from '../infrastructure/database/models/userSettingsModel';
+
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/fitvibe';
+
+async function seed() {
+    console.log('--- Starting FitVibe Mock Data Seeding ---');
+
+    // 1. Connect to MongoDB
+    console.log(`Connecting to MongoDB at ${MONGO_URI}...`);
+    await mongoose.connect(MONGO_URI);
+    console.log('MongoDB Connected successfully.');
+
+    // 2. Initialize MinIO S3 bucket & upload sample workout media files
+    console.log('Initializing MinIO bucket...');
+    await initMinioBucket();
+
+    // Dummy video content for seeding (minimal valid video byte buffer)
+    const dummyVideoBuffer = Buffer.from(
+        '00000018667479706d703432000000006d70343269736f6d',
+        'hex'
+    );
+
+    console.log('Uploading sample exercise videos to MinIO...');
+    const videoFiles = [
+        { name: 'pushups_demo.mp4', title: 'Push Ups Demo' },
+        { name: 'squats_demo.mp4', title: 'Bodyweight Squats Demo' },
+        { name: 'dumbbell_press_demo.mp4', title: 'Dumbbell Press Demo' },
+        { name: 'plank_demo.mp4', title: 'Plank Hold Demo' },
+        { name: 'jumping_jacks_demo.mp4', title: 'Jumping Jacks Demo' },
+    ];
+
+    const uploadedUrls: Record<string, string> = {};
+    for (const file of videoFiles) {
+        try {
+            const url = await uploadFile(file.name, dummyVideoBuffer, 'video/mp4');
+            uploadedUrls[file.name] = url;
+            console.log(`Uploaded ${file.name} -> ${url}`);
+        } catch (err) {
+            console.warn(`Could not upload ${file.name} to MinIO (is MinIO running?). Using local fallback URL.`);
+            uploadedUrls[file.name] = getObjectUrl(file.name);
+        }
+    }
+
+    // 3. Clear existing workouts & daily training planners
+    console.log('Clearing existing workouts and daily training planners...');
+    await Workout.deleteMany({});
+    await DailyTrainingPlanner.deleteMany({});
+
+    // 4. Create Mock Workouts (Created by Admin / Free)
+    console.log('Seeding mock Workouts...');
+    const workouts = await Workout.insertMany([
+        {
+            name: 'Standard Push-Ups',
+            category: 'Chest & Arms',
+            difficulty: 'Beginner',
+            video: uploadedUrls['pushups_demo.mp4'],
+            description: 'Classic push-up targeting chest, shoulders, and triceps.',
+            place: 'Home',
+            isFree: true,
+        },
+        {
+            name: 'Bodyweight Squats',
+            category: 'Legs & Glutes',
+            difficulty: 'Beginner',
+            video: uploadedUrls['squats_demo.mp4'],
+            description: 'Fundamental lower body strength builder.',
+            place: 'Home',
+            isFree: true,
+        },
+        {
+            name: 'Dumbbell Bench Press',
+            category: 'Chest & Core',
+            difficulty: 'Intermediate',
+            video: uploadedUrls['dumbbell_press_demo.mp4'],
+            description: 'Hypertrophy exercise for upper body muscle gain.',
+            place: 'Gym',
+            isFree: true,
+        },
+        {
+            name: 'Plank Hold',
+            category: 'Core & Stability',
+            difficulty: 'Beginner',
+            video: uploadedUrls['plank_demo.mp4'],
+            description: 'Isometric core strengthening exercise.',
+            place: 'Home',
+            isFree: true,
+        },
+        {
+            name: 'Jumping Jacks Cardio',
+            category: 'Full Body & Cardio',
+            difficulty: 'Beginner',
+            video: uploadedUrls['jumping_jacks_demo.mp4'],
+            description: 'High intensity aerobic warm up and calorie burner.',
+            place: 'Home',
+            isFree: true,
+        },
+    ]);
+
+    console.log(`Created ${workouts.length} workouts.`);
+
+    // 5. Create Mock Daily Training Planners (For Today and Future Days)
+    console.log('Seeding Daily Training Planners...');
+
+    const now = new Date();
+    const todayMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+    // Today's Daily Training Planner (Free System Workout)
+    const todayPlanner = await DailyTrainingPlanner.create({
+        date: todayMidnight,
+        name: 'Full Body Free Starter Workout',
+        duration: 40, // 40 minutes total time
+        isFree: true,
+        isCompleted: false,
+        exercises: [
+            {
+                workoutId: workouts[0]._id, // Push-Ups
+                duration: 60,
+                repeatition: 15,
+                sets: 3,
+                kilos: 0,
+            },
+            {
+                workoutId: workouts[1]._id, // Squats
+                duration: 60,
+                repeatition: 20,
+                sets: 4,
+                kilos: 0,
+            },
+            {
+                workoutId: workouts[3]._id, // Plank
+                duration: 45,
+                repeatition: 1,
+                sets: 3,
+                kilos: 0,
+            },
+            {
+                workoutId: workouts[4]._id, // Jumping Jacks
+                duration: 120,
+                repeatition: 30,
+                sets: 3,
+                kilos: 0,
+            },
+        ],
+    });
+
+    console.log(`Created Today's Daily Training Planner: "${todayPlanner.name}" (ID: ${todayPlanner._id})`);
+
+    // Tomorrow's Daily Training Planner
+    const tomorrowMidnight = new Date(todayMidnight.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowPlanner = await DailyTrainingPlanner.create({
+        date: tomorrowMidnight,
+        name: 'Upper Body Power & Core (Free)',
+        duration: 45,
+        isFree: true,
+        isCompleted: false,
+        exercises: [
+            {
+                workoutId: workouts[0]._id,
+                duration: 60,
+                repeatition: 20,
+                sets: 4,
+                kilos: 0,
+            },
+            {
+                workoutId: workouts[2]._id,
+                duration: 90,
+                repeatition: 12,
+                sets: 4,
+                kilos: 15,
+            },
+            {
+                workoutId: workouts[3]._id,
+                duration: 60,
+                repeatition: 1,
+                sets: 4,
+                kilos: 0,
+            },
+        ],
+    });
+
+    console.log(`Created Tomorrow's Daily Training Planner: "${tomorrowPlanner.name}" (ID: ${tomorrowPlanner._id})`);
+
+    // 6. Ensure test user exists
+    const testUsername = 'testuser';
+    let user = await User.findOne({ username: testUsername });
+
+    if (!user) {
+        console.log(`Creating test user "${testUsername}"...`);
+        const hashedPassword = await bcrypt.hash('password123', 10);
+        user = await User.create({
+            username: testUsername,
+            email: 'testuser@fitvibe.com',
+            password: hashedPassword,
+            account_type: 'client',
+            first_name: 'Alex',
+            last_name: 'Fitness',
+            age: 25,
+            gender: 'Male',
+            client: {
+                weight: 75,
+                height: 180,
+                fats: '15%',
+                personal_goals: {
+                    goal: 'Increase physical fitness',
+                    weight_goal: 72,
+                },
+            },
+        });
+        console.log(`Created test user with ID: ${user._id}`);
+    } else {
+        console.log(`Test user "${testUsername}" already exists.`);
+    }
+
+    // Ensure UserSettings exist for test user
+    let settings = await UserSettings.findOne({ userId: user._id });
+    if (!settings) {
+        await UserSettings.create({
+            userId: user._id,
+            water: {
+                is_active: true,
+                daily_need: 2.5,
+                cup_size_ml: 250,
+                reminder_interval_minutes: 60,
+            },
+        });
+        console.log(`Created UserSettings for test user.`);
+    }
+
+    console.log('\n--- Mock Data Seeding Completed Successfully! ---');
+    await mongoose.connection.close();
+    process.exit(0);
+}
+
+seed().catch((err) => {
+    console.error('Error during mock data seeding:', err);
+    process.exit(1);
+});

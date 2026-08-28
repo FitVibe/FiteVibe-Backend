@@ -1,15 +1,16 @@
 # FitVibe Backend API
 
-FitVibe is a fitness and gym management backend API built with Node.js, Express, TypeScript, and MongoDB.
+FitVibe is a fitness and gym management backend API built with Node.js, Express, TypeScript, MongoDB, Kafka, MinIO (S3), and Firebase Cloud Messaging.
 
 ---
 
 ## 📋 Table of Contents
 
 - [Prerequisites](#-prerequisites)
-- [Database Setup (MongoDB)](#-database-setup-mongodb)
+- [Infrastructure Setup (Docker Compose)](#-infrastructure-setup-docker-compose)
 - [Environment Configuration](#-environment-configuration)
 - [Installation](#-installation)
+- [Mock Data Seeding](#-mock-data-seeding)
 - [Running the Application](#-running-the-application)
 - [API Endpoints](#-api-endpoints)
   - [Auth](#auth)
@@ -19,11 +20,13 @@ FitVibe is a fitness and gym management backend API built with Node.js, Express,
     - [Logout](#4-logout)
     - [Update FCM Token](#5-update-fcm-token)
   - [Home](#home)
-    - [Get Home Data](#6-home-daily-login-streak)
+    - [Get Home Data (Streak, Water, Training Day)](#6-home-data-daily-login-streak-water--training-day)
     - [Add Water Cup](#7-add-water-cup)
   - [Settings](#settings)
     - [Get Water Settings](#8-get-water-settings)
     - [Update Water Settings](#9-update-water-settings)
+- [MinIO S3 Storage](#-minio-s3-storage)
+- [Daily Workout Push Notifications](#-daily-workout-push-notifications)
 - [Project Structure](#-project-structure)
 
 ---
@@ -34,45 +37,52 @@ Make sure you have the following installed on your system:
 
 - **Node.js**: `v18.x` or higher ([Download Node.js](https://nodejs.org/))
 - **npm**: `v9.x` or higher (comes with Node.js)
-- **MongoDB**: Community Edition or MongoDB Atlas cluster ([Download MongoDB](https://www.mongodb.com/try/download/community))
-- **mongosh**: MongoDB Shell (optional, for direct database querying)
+- **Docker & Docker Compose**: ([Download Docker](https://www.docker.com/))
 
 ---
 
-## 🍃 Database Setup (MongoDB)
+## 🐳 Infrastructure Setup (Docker Compose)
 
-### 1. Start Local MongoDB Service
+FitVibe uses Docker Compose to run Kafka, MinIO S3 storage, and MongoDB locally.
 
-- **Linux / Ubuntu / WSL**:
-  ```bash
-  sudo service mongodb start
-  # or
-  sudo systemctl start mongod
-  ```
+### Start Containers
 
-- **Windows**:
-  Ensure MongoDB service is running in Windows Services (`services.msc`) or run `mongod.exe`.
-
-### 2. Verify Database Connection (Optional)
-
-You can verify that MongoDB is running using `mongosh`:
+Run the following command in the `FiteVibe-Backend` directory:
 
 ```bash
-mongosh "mongodb://localhost:27017/fitvibe"
+docker compose up -d
 ```
+
+This starts:
+- **Kafka Broker**: `localhost:9092`
+- **MinIO S3 Storage**: `localhost:9000` (API) & `localhost:9001` (Web Console)
+- **MongoDB**: `localhost:27017`
+
+### MinIO Web Console Login
+- **URL**: `http://localhost:9001`
+- **Username**: `minioadmin`
+- **Password**: `minioadmin`
 
 ---
 
 ## ⚙️ Environment Configuration
 
-Create a `.env` file in the root of `FiteVibe-Backend` (or verify existing `.env`):
+Create a `.env` file in `FiteVibe-Backend` (or use `.env.example` as a template):
 
 ```env
 PORT=3000
 MONGO_URI=mongodb://localhost:27017/fitvibe
-SESSION_SECRET=your_session_secret
+SESSION_SECRET=fitvibe_secret_key
 
-# Firebase (for push notifications)
+# MinIO (S3 Object Storage)
+MINIO_ENDPOINT=localhost
+MINIO_PORT=9000
+MINIO_USE_SSL=false
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET_NAME=fitvibe-media
+
+# Firebase (Push Notifications)
 FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_CLIENT_EMAIL=your-client-email@project.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
@@ -91,48 +101,58 @@ KAFKA_CLIENT_ID=fitvibe-backend
    cd FiteVibe-Backend
    ```
 
-2. Install all dependencies:
+2. Install dependencies:
    ```bash
    npm install
    ```
 
 ---
 
+## 🌱 Mock Data Seeding
+
+Populate MinIO bucket with exercise media, seed workouts, daily training planners, and a test client user in MongoDB:
+
+```bash
+npm run seed
+```
+
+This script:
+1. Initializes MinIO bucket `fitvibe-media` with public read access.
+2. Uploads sample exercise videos (`pushups_demo.mp4`, `squats_demo.mp4`, etc.).
+3. Seeds mock `Workout` records (Chest, Legs, Core, Cardio).
+4. Seeds `DailyTrainingPlanner` records for today and future days (`isFree: true`).
+5. Creates a default test client account:
+   - **Username**: `testuser`
+   - **Password**: `password123`
+
+---
+
 ## 🏃 Running the Application
 
-### Development Mode (with Hot-Reloading)
-
-Runs the server using `nodemon` and `ts-node`:
+### Development Mode (Hot-Reloading)
 
 ```bash
 npm run dev
 ```
 
-The server will start listening on `http://localhost:3000`.
+The server will start at `http://localhost:3000`.
 
 ### Production Build
 
-1. Compile TypeScript to JavaScript:
-   ```bash
-   npm run build
-   ```
-
-2. Start compiled JavaScript production server:
-   ```bash
-   npm start
-   ```
+```bash
+npm run build
+npm start
+```
 
 ---
 
 ## 📡 API Endpoints
 
 ### 1. Sign Up
-Creates a new user account (supports `client`, `coach`, or `admin` types).
-
 - **Method**: `POST`
-- **URL**: `http://localhost:3000/api/auth/sign_up`
+- **URL**: `/api/auth/sign_up`
 - **Headers**: `Content-Type: application/json`
-- **Request Body Example**:
+- **Body**:
 
 ```json
 {
@@ -147,7 +167,7 @@ Creates a new user account (supports `client`, `coach`, or `admin` types).
     "height": 180,
     "fats": "15",
     "personal_goals": {
-      "goal": "Weight loss",
+      "goal": "Increase physical fitness",
       "weight_goal": 70
     }
   },
@@ -156,42 +176,12 @@ Creates a new user account (supports `client`, `coach`, or `admin` types).
 }
 ```
 
-- **Success Response (200 OK)**:
-
-```json
-{
-  "status": "success",
-  "data": {
-    "_id": "66a80b1e123456789abcdef0",
-    "username": "john_doe",
-    "first_name": "John",
-    "last_name": "Doe",
-    "email": "john.doe@example.com",
-    "account_type": "client",
-    "age": 25,
-    "gender": "male",
-    "client": {
-      "weight": 75,
-      "height": 180,
-      "fats": "15",
-      "personal_goals": {
-        "goal": "Weight loss",
-        "weight_goal": 70
-      }
-    }
-  }
-}
-```
-
 ---
 
 ### 2. Sign In
-Authenticates user credentials using Passport Local Strategy.
-
 - **Method**: `POST`
-- **URL**: `http://localhost:3000/api/auth/sign_in`
-- **Headers**: `Content-Type: application/json`
-- **Request Body Example**:
+- **URL**: `/api/auth/sign_in`
+- **Body**:
 
 ```json
 {
@@ -200,101 +190,26 @@ Authenticates user credentials using Passport Local Strategy.
 }
 ```
 
-- **Success Response (200 OK)**:
-
-```json
-{
-  "status": "success",
-  "data": {
-    "_id": "66a80b1e123456789abcdef0",
-    "username": "john_doe",
-    "first_name": "John",
-    "last_name": "Doe",
-    "email": "john.doe@example.com",
-    "account_type": "client",
-    "age": 25,
-    "gender": "male",
-    "client": {
-      "weight": 75,
-      "height": 180,
-      "fats": "15",
-      "personal_goals": {
-        "goal": "Weight loss",
-        "weight_goal": 70
-      }
-    }
-  }
-}
-```
-
 ---
 
 ### 3. Current User
-Retrieves the currently authenticated user's session data.
-
 - **Method**: `GET`
-- **URL**: `http://localhost:3000/api/auth/current_user`
-- **Success Response (200 OK)**:
-
-```json
-{
-  "status": "success",
-  "data": {
-    "_id": "66a80b1e123456789abcdef0",
-    "username": "john_doe",
-    "first_name": "John",
-    "last_name": "Doe",
-    "email": "john.doe@example.com",
-    "account_type": "client",
-    "age": 25,
-    "gender": "male",
-    "client": {
-      "weight": 75,
-      "height": 180,
-      "fats": "15",
-      "personal_goals": {
-        "goal": "Weight loss",
-        "weight_goal": 70
-      }
-    }
-  }
-}
-```
-
-- **Unauthenticated Response (401 Unauthorized)**:
-
-```json
-{
-  "status": "error",
-  "message": "Not authenticated"
-}
-```
+- **URL**: `/api/auth/current_user`
 
 ---
 
 ### 4. Logout
-Logs out the current authenticated user and terminates the session.
-
 - **Method**: `POST`
-- **URL**: `http://localhost:3000/api/auth/logout`
-- **Success Response (200 OK)**:
-
-```json
-{
-  "status": "success",
-  "message": "Logged out successfully"
-}
-```
+- **URL**: `/api/auth/logout`
 
 ---
 
 ### 5. Update FCM Token
-Registers or refreshes the device's Firebase Cloud Messaging token. The mobile app calls this automatically right after sign in and whenever Firebase rotates the token. Required for push notification delivery (water reminders).
+Registers/updates the device FCM push token for water and daily workout reminders.
 
 - **Method**: `PATCH`
-- **URL**: `http://localhost:3000/api/auth/fcm-token`
-- **Headers**: `Content-Type: application/json`, Requires active session
-- **Request Body**:
+- **URL**: `/api/auth/fcm-token`
+- **Body**:
 
 ```json
 {
@@ -302,135 +217,90 @@ Registers or refreshes the device's Firebase Cloud Messaging token. The mobile a
 }
 ```
 
-- **Success Response (200 OK)**:
-
-```json
-{
-  "status": "success",
-  "message": "FCM token updated"
-}
-```
-
-- **Error Response (400 Bad Request)** — missing or invalid token field:
-
-```json
-{
-  "status": "error",
-  "message": "fcm_token is required"
-}
-```
-
-> **Mobile usage**: Call this endpoint immediately after a successful sign in, and subscribe to Firebase's `onTokenRefresh` callback to keep it up to date automatically.
-
-
 ---
 
-### 6. Home (Daily Login Streak)
-Retrieves the home page data for the authenticated user, which currently includes their daily login streak. The streak counter automatically increments indefinitely upon daily visits, and resets to 1 if a day is skipped.
+### 6. Home Data (Daily Login Streak, Water & Training Day)
+Retrieves home screen data for the authenticated client, including login streak, daily water intake log, and today's training day planner.
 
 - **Method**: `GET`
-- **URL**: `http://localhost:3000/api/home`
-- **Headers**: Requires active session (handled via Auth Middleware)
-- **Success Response (200 OK)**:
+- **URL**: `/api/home`
+- **Response Example (200 OK)**:
 
 ```json
 {
   "dailyLogin": {
     "streakCount": 5,
-    "lastLoginDate": "2023-10-25T00:00:00.000Z"
+    "lastLoginDate": "2026-08-28T00:00:00.000Z"
+  },
+  "water": {
+    "today_intake_ml": 500,
+    "daily_need_ml": 2500,
+    "cup_size_ml": 250,
+    "progress_percentage": 20
+  },
+  "trainingDay": {
+    "plannerId": "66ce7a1f123456789abcdef0",
+    "name": "Full Body Free Starter Workout",
+    "isFree": true,
+    "exercisesCount": 4,
+    "totalTime": 40,
+    "isCompleted": false,
+    "date": "2026-08-28T00:00:00.000Z",
+    "exercises": [
+      {
+        "workoutId": "66ce7a1e123456789abcdef1",
+        "name": "Standard Push-Ups",
+        "category": "Chest & Arms",
+        "difficulty": "Beginner",
+        "video": "http://localhost:9000/fitvibe-media/pushups_demo.mp4",
+        "description": "Classic push-up targeting chest, shoulders, and triceps.",
+        "place": "Home",
+        "duration": 60,
+        "repeatition": 15,
+        "sets": 3,
+        "kilos": 0
+      }
+    ]
   }
-}
-```
-
-- **Unauthenticated Response (401 Unauthorized)**:
-
-```json
-{
-  "status": "error",
-  "message": "Not authenticated"
 }
 ```
 
 ---
 
 ### 7. Add Water Cup
-Adds one cup of water (based on the user's configured `cup_size_ml`) to today's water log.
-
 - **Method**: `POST`
-- **URL**: `http://localhost:3000/api/home/water/add`
-- **Headers**: Requires active session
-- **Success Response (200 OK)**:
-
-```json
-{
-  "status": "success",
-  "data": {
-    "_id": "...",
-    "userId": "...",
-    "date": "2026-08-20T00:00:00.000Z",
-    "quantity_ml": 500,
-  }
-}
-```
+- **URL**: `/api/home/water/add`
 
 ---
 
-## Settings
-
 ### 8. Get Water Settings
-Returns the current water configuration for the authenticated user.
-
 - **Method**: `GET`
-- **URL**: `http://localhost:3000/api/settings/water`
-- **Headers**: Requires active session
-- **Success Response (200 OK)**:
-
-```json
-{
-  "status": "success",
-  "data": {
-    "is_active": true,
-    "daily_need": 2.5,
-    "cup_size_ml": 250,
-    "reminder_interval_minutes": 40,
-    "next_reminder_at": "2026-08-20T18:10:00.000Z"
-  }
-}
-```
+- **URL**: `/api/settings/water`
 
 ---
 
 ### 9. Update Water Settings
-Updates the water configuration. Any combination of fields can be sent. Recalculates `next_reminder_at` automatically when `is_active` or `reminder_interval_minutes` changes.
-
 - **Method**: `PUT`
-- **URL**: `http://localhost:3000/api/settings/water`
-- **Headers**: `Content-Type: application/json`, Requires active session
-- **Request Body Example**:
+- **URL**: `/api/settings/water`
 
-```json
-{
-  "is_active": true,
-  "daily_need": 2.5,
-  "cup_size_ml": 250,
-  "reminder_interval_minutes": 40
-}
-```
+---
 
-- **Success Response (200 OK)**:
+## 🪣 MinIO S3 Storage
 
-```json
-{
-  "status": "success",
-  "data": {
-    "is_active": true,
-    "daily_need": 2.5,
-    "cup_size_ml": 250,
-    "reminder_interval_minutes": 40,
-    "next_reminder_at": "2026-08-20T18:10:00.000Z"
-  }
-}
-```
+Workout videos and media assets are stored in MinIO object storage bucket `fitvibe-media`.
+- **Initialization**: Automatically executed on server startup via `initMinioBucket()`.
+- **Public Read Access**: Public read bucket policy applied automatically so video URLs (e.g. `http://localhost:9000/fitvibe-media/pushups_demo.mp4`) can be played directly on client applications.
+
+---
+
+## 🔔 Daily Workout Push Notifications
+
+FitVibe uses KafkaJS + Firebase Admin SDK for event-driven daily notifications:
+- **Kafka Topic**: `workout-reminders`
+- **Producer**: [workoutReminderProducer.ts](file:///home/salah/Projects/github/FitVibe/FiteVibe-Backend/infrastructure/kafka/workoutReminderProducer.ts) triggers daily ticks.
+- **Consumer**: [workoutReminderConsumer.ts](file:///home/salah/Projects/github/FitVibe/FiteVibe-Backend/infrastructure/kafka/workoutReminderConsumer.ts) inspects users, finds today's daily workout planner, and sends FCM push notification:
+  - **Title**: `🏋️ workout of today!`
+  - **Body**: `Hello {first_name}! Today's workout "{planner.name}" ({duration} mins, {count} exercises) is ready. Let's crush it!`
 
 ---
 
@@ -439,25 +309,30 @@ Updates the water configuration. Any combination of fields can be sent. Recalcul
 ```text
 FiteVibe-Backend/
 ├── app/
-│   ├── controllers/      # Route controllers (Auth, Home, Water)
+│   ├── controllers/      # Auth, Home, Water controllers
 │   ├── middlewares/      # Express middlewares (isAuthenticated)
 │   ├── routes/           # Express router definitions
-│   ├── services/         # Business logic (UserService, HomeService, WaterService)
-│   └── index.ts          # Express app entry point
+│   ├── services/         # UserService, HomeService, WaterService
+│   ├── index.ts          # Server entry point
+│   ├── services.ts       # Dependency injection container
+│   └── controllers.ts    # Controller instances container
 ├── domain/
-│   ├── entities/         # TypeScript interfaces & domain entities
-│   ├── types/            # Global declaration types (.d.ts)
+│   ├── entities/         # TypeScript interfaces (User, Workout, DailyTrainingPlanner, DailyLogin, etc.)
+│   ├── types/            # Type declarations
 │   └── validator/        # Validation contracts
 ├── infrastructure/
 │   ├── database/
-│   │   └── models/       # Mongoose models (User, DailyLogin, DailyTasks,
-│   │                     #   DrinkWaterSettings, DrinkWaterTask)
-│   ├── firebase/         # Firebase Admin SDK setup & FCM helper
-│   ├── kafka/            # KafkaJS client, producer (cron tick), consumer (FCM sender)
-│   ├── passport_js/      # Passport authentication strategies
+│   │   ├── models/       # Mongoose models (userModel, workoutModel, dailyTrainingPlannerModel, etc.)
+│   │   └── MongoDatabase.ts
+│   ├── firebase/         # Firebase Admin SDK & FCM push helpers
+│   ├── kafka/            # KafkaJS client, water & workout producers/consumers
+│   ├── minio/            # MinIO S3 storage client & helpers
+│   ├── passport_js/      # Passport authentication strategy
 │   └── validators/       # Request validation logic
-├── docker-compose.yml    # Local Kafka + Zookeeper dev environment
-├── .env                  # Environment variables
+├── scripts/
+│   └── seedMockData.ts   # Seed script for MinIO media, workouts, planners, and test user
+├── docker-compose.yml    # Kafka + MinIO + MongoDB container configuration
+├── .env                  # Environment configuration
 ├── package.json
-└── tsconfig.json         # TypeScript configuration
+└── tsconfig.json
 ```
