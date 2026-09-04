@@ -8,6 +8,8 @@ import Meal from '../infrastructure/database/models/mealModel';
 import DailyMeals from '../infrastructure/database/models/dailyMealsModel';
 import User from '../infrastructure/database/models/userModel';
 import UserSettings from '../infrastructure/database/models/userSettingsModel';
+import { flushCache } from '../infrastructure/memcached/memcachedClient';
+
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/fitvibe';
 
@@ -56,6 +58,8 @@ async function seed() {
     await DailyTrainingPlanner.deleteMany({});
     await Meal.deleteMany({});
     await DailyMeals.deleteMany({});
+    await flushCache();
+
 
     // 4. Create Mock Workouts (Created by Admin / Free)
     console.log('Seeding mock Workouts...');

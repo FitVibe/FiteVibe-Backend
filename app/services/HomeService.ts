@@ -1,37 +1,35 @@
 import { MongoDBDatabase } from "@/infrastructure/database/MongoDatabase";
 import { Model } from "mongoose";
 import { DailyLoginEntity } from "@/domain/entities/DailyLoginEntity";
-import { DailyTrainingPlannerEntity } from "@/domain/entities/DailyTrainingPlannerEntity";
-import { WorkoutEntity } from "@/domain/entities/WorkoutEntity";
-import { DailyMealsEntity } from "@/domain/entities/DailyMealsEntity";
-import { MealEntity } from "@/domain/entities/MealEntity";
 import { Types } from "mongoose";
 import WaterService from "./WaterService";
+import { MeasureCalculationService } from "@/domain/services/MeasureCalculationService";
+import { getCache, setCache, clearUserDailyMeasures } from "@/infrastructure/memcached/memcachedClient";
+import { IDailyTrainingPlannerRepository } from "@/domain/repositories/IDailyTrainingPlannerRepository";
+import { IDailyMealsRepository } from "@/domain/repositories/IDailyMealsRepository";
+import { IUserRepository } from "@/domain/repositories/IUserRepository";
 
 export default class HomeService {
     private db: MongoDBDatabase;
     private dailyLoginModel: Model<DailyLoginEntity>;
-    private dailyTrainingPlannerModel: Model<DailyTrainingPlannerEntity>;
-    private workoutModel: Model<WorkoutEntity>;
-    private dailyMealsModel: Model<DailyMealsEntity>;
-    private mealModel: Model<MealEntity>;
+    private dailyTrainingPlannerRepo: IDailyTrainingPlannerRepository;
+    private dailyMealsRepo: IDailyMealsRepository;
+    private userRepo: IUserRepository;
     private waterService: WaterService;
 
     constructor(
         db: MongoDBDatabase,
         dailyLoginModel: Model<DailyLoginEntity>,
-        dailyTrainingPlannerModel: Model<DailyTrainingPlannerEntity>,
-        workoutModel: Model<WorkoutEntity>,
-        dailyMealsModel: Model<DailyMealsEntity>,
-        mealModel: Model<MealEntity>,
+        dailyTrainingPlannerRepo: IDailyTrainingPlannerRepository,
+        dailyMealsRepo: IDailyMealsRepository,
+        userRepo: IUserRepository,
         waterService: WaterService
     ) {
         this.db = db;
         this.dailyLoginModel = dailyLoginModel;
-        this.dailyTrainingPlannerModel = dailyTrainingPlannerModel;
-        this.workoutModel = workoutModel;
-        this.dailyMealsModel = dailyMealsModel;
-        this.mealModel = mealModel;
+        this.dailyTrainingPlannerRepo = dailyTrainingPlannerRepo;
+        this.dailyMealsRepo = dailyMealsRepo;
+        this.userRepo = userRepo;
         this.waterService = waterService;
     }
 
@@ -83,28 +81,15 @@ export default class HomeService {
         // Fetch water section data
         const water = await this.waterService.getWaterHomeData(userId);
 
-        // Fetch Daily Training Planner for today
-        const userObjId = new Types.ObjectId(userId);
-        
-        // Priority 1: Specific planner for this client for today
-        let planner = await this.dailyTrainingPlannerModel.findOne({
-            userId: userObjId,
-            date: { $gte: todayMidnight, $lt: tomorrowMidnight }
-        }).populate('exercises.workoutId');
+        // Fetch Daily Training Planner for today via Repository
+        let planner = await this.dailyTrainingPlannerRepo.findTodayPlannerForUser(userId, todayMidnight, tomorrowMidnight);
 
-        // Priority 2: General/Free planner for today
         if (!planner) {
-            planner = await this.dailyTrainingPlannerModel.findOne({
-                $or: [{ userId: { $exists: false } }, { userId: null }],
-                date: { $gte: todayMidnight, $lt: tomorrowMidnight }
-            }).populate('exercises.workoutId');
+            planner = await this.dailyTrainingPlannerRepo.findTodayFreePlanner(todayMidnight, tomorrowMidnight);
         }
 
-        // Priority 3: Fallback to any latest free planner
         if (!planner) {
-            planner = await this.dailyTrainingPlannerModel.findOne({ isFree: true })
-                .sort({ date: -1 })
-                .populate('exercises.workoutId');
+            planner = await this.dailyTrainingPlannerRepo.findLatestFreePlanner();
         }
 
         let trainingDay = null;
@@ -134,26 +119,15 @@ export default class HomeService {
             };
         }
 
-        // Fetch Daily Meals Plan for today
-        // Priority 1: Specific daily meals plan for this client today
-        let mealsPlan = await this.dailyMealsModel.findOne({
-            userId: userObjId,
-            date: { $gte: todayMidnight, $lt: tomorrowMidnight }
-        }).populate('meals.mealId');
+        // Fetch Daily Meals Plan for today via Repository
+        let mealsPlan = await this.dailyMealsRepo.findTodayMealsPlanForUser(userId, todayMidnight, tomorrowMidnight);
 
-        // Priority 2: General/Free system daily meals plan for today
         if (!mealsPlan) {
-            mealsPlan = await this.dailyMealsModel.findOne({
-                $or: [{ userId: { $exists: false } }, { userId: null }],
-                date: { $gte: todayMidnight, $lt: tomorrowMidnight }
-            }).populate('meals.mealId');
+            mealsPlan = await this.dailyMealsRepo.findTodayFreeMealsPlan(todayMidnight, tomorrowMidnight);
         }
 
-        // Priority 3: Fallback to latest available free system daily meals plan
         if (!mealsPlan) {
-            mealsPlan = await this.dailyMealsModel.findOne({ isFree: true })
-                .sort({ date: -1 })
-                .populate('meals.mealId');
+            mealsPlan = await this.dailyMealsRepo.findLatestFreeMealsPlan();
         }
 
         let dailyMeals = null;
@@ -204,6 +178,96 @@ export default class HomeService {
             };
         }
 
+        // --- Fetch & Cache Daily Measures (Memcached) ---
+        const todayString = `${todayMidnight.getUTCFullYear()}-${String(todayMidnight.getUTCMonth() + 1).padStart(2, '0')}-${String(todayMidnight.getUTCDate()).padStart(2, '0')}`;
+        const cacheKey = `daily_measures:${userId}:${todayString}`;
+
+        let dailyMeasures = await getCache<any>(cacheKey);
+
+        if (!dailyMeasures) {
+            // Fetch User Profile for Weight & Goals via Repository
+            const user = await this.userRepo.findById(userId);
+            const currentWeight = user?.client?.weight ?? null;
+            const weightGoal = user?.client?.personal_goals?.weight_goal ?? null;
+
+            // Calculate Workout Activity Metrics
+            const activityMetrics = MeasureCalculationService.calculateWorkoutActivity(planner ? planner.exercises : [], currentWeight);
+
+            // Filter Completed Meals & Calculate Macro Intake
+            const completedMeals = mealsPlan
+                ? mealsPlan.meals
+                    .filter((m: any) => m.status === 'completed')
+                    .map((m: any) => m.mealId || {})
+                : [];
+
+            const intakeMacros = MeasureCalculationService.calculateMealMacros(completedMeals);
+            
+            // Calculate Macro Calorie Breakdown
+            const macroCalories = MeasureCalculationService.calculateMacroCalories(
+                intakeMacros.totalProtein,
+                intakeMacros.totalCarbs,
+                intakeMacros.totalFats
+            );
+
+            // Calculate Target Goals from User Biometrics & Personal Goal
+            const calculatedTargets = MeasureCalculationService.calculateTargetGoals({
+                age: user?.age ?? null,
+                gender: user?.gender ?? null,
+                weightKg: currentWeight,
+                heightCm: user?.client?.height ?? null,
+                goal: user?.client?.personal_goals?.goal ?? null,
+            });
+
+            const targetCalories = (user?.client?.personal_goals as any)?.target_calories ?? calculatedTargets.targetCalories;
+            const targetProteinGrams = (user?.client?.personal_goals as any)?.target_protein ?? calculatedTargets.targetProteinGrams;
+            const targetCarbsGrams = (user?.client?.personal_goals as any)?.target_carbs ?? calculatedTargets.targetCarbsGrams;
+            const targetFatsGrams = (user?.client?.personal_goals as any)?.target_fats ?? calculatedTargets.targetFatsGrams;
+
+            // Calculate Net Calories
+            const currentNetCalories = MeasureCalculationService.calculateNetCalories(
+                intakeMacros.totalCalories,
+                activityMetrics.burnedCalories
+            );
+
+            dailyMeasures = {
+                weight: {
+                    current: currentWeight,
+                    goal: weightGoal,
+                    unit: currentWeight !== null ? 'kg' : null,
+                },
+                activity: {
+                    workoutTimeMinutes: activityMetrics.workoutTimeMinutes,
+                    burnedCalories: activityMetrics.burnedCalories,
+                },
+                calories: {
+                    currentNetCalories,
+                    consumedCalories: intakeMacros.totalCalories,
+                    burnedCalories: activityMetrics.burnedCalories,
+                    targetCalories,
+                },
+                macros: {
+                    protein: {
+                        currentGrams: intakeMacros.totalProtein,
+                        targetGrams: targetProteinGrams,
+                        calories: macroCalories.proteinCalories,
+                    },
+                    carbs: {
+                        currentGrams: intakeMacros.totalCarbs,
+                        targetGrams: targetCarbsGrams,
+                        calories: macroCalories.carbsCalories,
+                    },
+                    fats: {
+                        currentGrams: intakeMacros.totalFats,
+                        targetGrams: targetFatsGrams,
+                        calories: macroCalories.fatsCalories,
+                    },
+                },
+            };
+
+            // Store in Memcached (TTL: 24 hours / 86400s)
+            await setCache(cacheKey, dailyMeasures, 86400);
+        }
+
         return {
             dailyLogin: {
                 streakCount: dailyLogin?.streakCount || 1,
@@ -212,30 +276,19 @@ export default class HomeService {
             water,
             trainingDay,
             dailyMeals,
+            dailyMeasures,
         };
     }
 
     public async logMealStatus(userId: string, planId: string, mealType: string, status: string) {
-        const plan = await this.dailyMealsModel.findById(planId);
+        const plan = await this.dailyMealsRepo.updateMealStatus(planId, mealType, status);
         if (!plan) {
-            throw new Error('Daily meals plan not found');
+            throw new Error('Daily meals plan not found or invalid meal type');
         }
 
-        const mealItem = plan.meals.find(m => m.meal_type.toLowerCase() === mealType.toLowerCase());
-        if (!mealItem) {
-            throw new Error(`Meal type ${mealType} not found in this plan`);
-        }
+        // Invalidate Memcached daily measures cache for user
+        await clearUserDailyMeasures(userId);
 
-        mealItem.status = status;
-        if (status === 'completed') {
-            mealItem.logged_at = new Date();
-        }
-
-        // Check if all meals in plan are completed
-        const allCompleted = plan.meals.every(m => m.status === 'completed');
-        plan.is_complete = allCompleted;
-
-        await plan.save();
         return plan;
     }
 }

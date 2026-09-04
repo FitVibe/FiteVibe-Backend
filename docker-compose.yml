@@ -34,4 +34,11 @@ services:
     ports:
       - "27017:27017"
 
+  memcached:
+    image: memcached:alpine
+    container_name: fitvibe-memcached
+    ports:
+      - "11211:11211"
+
+
 
