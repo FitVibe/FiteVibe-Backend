@@ -4,6 +4,8 @@ import 'dotenv/config';
 import { initMinioBucket, uploadFile, getObjectUrl } from '../infrastructure/minio/minioClient';
 import Workout from '../infrastructure/database/models/workoutModel';
 import DailyTrainingPlanner from '../infrastructure/database/models/dailyTrainingPlannerModel';
+import Meal from '../infrastructure/database/models/mealModel';
+import DailyMeals from '../infrastructure/database/models/dailyMealsModel';
 import User from '../infrastructure/database/models/userModel';
 import UserSettings from '../infrastructure/database/models/userSettingsModel';
 
@@ -48,10 +50,12 @@ async function seed() {
         }
     }
 
-    // 3. Clear existing workouts & daily training planners
-    console.log('Clearing existing workouts and daily training planners...');
+    // 3. Clear existing collections
+    console.log('Clearing existing workouts, daily training planners, meals, and daily meals plans...');
     await Workout.deleteMany({});
     await DailyTrainingPlanner.deleteMany({});
+    await Meal.deleteMany({});
+    await DailyMeals.deleteMany({});
 
     // 4. Create Mock Workouts (Created by Admin / Free)
     console.log('Seeding mock Workouts...');
@@ -154,7 +158,7 @@ async function seed() {
 
     // Tomorrow's Daily Training Planner
     const tomorrowMidnight = new Date(todayMidnight.getTime() + 24 * 60 * 60 * 1000);
-    const tomorrowPlanner = await DailyTrainingPlanner.create({
+    await DailyTrainingPlanner.create({
         date: tomorrowMidnight,
         name: 'Upper Body Power & Core (Free)',
         duration: 45,
@@ -185,9 +189,106 @@ async function seed() {
         ],
     });
 
-    console.log(`Created Tomorrow's Daily Training Planner: "${tomorrowPlanner.name}" (ID: ${tomorrowPlanner._id})`);
+    // 6. Create Mock Meals & Daily Meals Plans
+    console.log('Seeding mock Meals...');
+    const meals = await Meal.insertMany([
+        {
+            name: 'شوفان وبروتين شيك (Oatmeal & Protein Shake)',
+            carbs: 55,
+            protein: 35,
+            fats: 10,
+            calories: 450,
+            ingredients: ['Rolled Oats 80g', 'Whey Protein 30g', 'Almond Milk 250ml', 'Banana 1'],
+            isFree: true,
+        },
+        {
+            name: 'دجاج مشوي وكينوا (Grilled Chicken & Quinoa)',
+            carbs: 65,
+            protein: 55,
+            fats: 18,
+            calories: 650,
+            ingredients: ['Chicken Breast 200g', 'Quinoa 150g', 'Steamed Vegetables', 'Olive Oil 10ml'],
+            isFree: true,
+        },
+        {
+            name: 'سلمون وأسباراغوس (Salmon & Asparagus)',
+            carbs: 25,
+            protein: 45,
+            fats: 25,
+            calories: 550,
+            ingredients: ['Fresh Salmon Fillet 200g', 'Grilled Asparagus 150g', 'Lemon Juice', 'Garlic Butter'],
+            isFree: true,
+        },
+        {
+            name: 'زبادي يوناني وثمار (Greek Yogurt & Berries)',
+            carbs: 20,
+            protein: 15,
+            fats: 4,
+            calories: 200,
+            ingredients: ['Greek Yogurt 150g', 'Fresh Blueberries 50g', 'Raw Honey 10g'],
+            isFree: true,
+        },
+    ]);
 
-    // 6. Ensure test user exists
+    console.log(`Created ${meals.length} mock meals.`);
+
+    // Today's Daily Meals Plan matching UI screenshot
+    const todayDailyMeals = await DailyMeals.create({
+        date: todayMidnight,
+        is_complete: false,
+        isFree: true,
+        meals: [
+            {
+                meal_type: 'Breakfast',
+                mealId: meals[0]._id, // Oats & Protein Shake
+                status: 'completed', // تم التسجيل
+                logged_at: new Date(),
+            },
+            {
+                meal_type: 'Lunch',
+                mealId: meals[1]._id, // Grilled Chicken & Quinoa
+                status: 'pending', // سجّل الوجبة
+            },
+            {
+                meal_type: 'Dinner',
+                mealId: meals[2]._id, // Salmon & Asparagus
+                status: 'upcoming', // قادم
+            },
+            {
+                meal_type: 'Snacks',
+                mealId: meals[3]._id, // Greek Yogurt & Berries
+                status: 'upcoming', // قادم
+            },
+        ],
+    });
+
+    console.log(`Created Today's Daily Meals Plan (ID: ${todayDailyMeals._id})`);
+
+    // Tomorrow's Daily Meals Plan
+    await DailyMeals.create({
+        date: tomorrowMidnight,
+        is_complete: false,
+        isFree: true,
+        meals: [
+            {
+                meal_type: 'Breakfast',
+                mealId: meals[0]._id,
+                status: 'pending',
+            },
+            {
+                meal_type: 'Lunch',
+                mealId: meals[1]._id,
+                status: 'pending',
+            },
+            {
+                meal_type: 'Dinner',
+                mealId: meals[2]._id,
+                status: 'pending',
+            },
+        ],
+    });
+
+    // 7. Ensure test user exists
     const testUsername = 'testuser';
     let user = await User.findOne({ username: testUsername });
 

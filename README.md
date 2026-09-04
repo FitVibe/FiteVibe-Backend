@@ -1,6 +1,6 @@
 # FitVibe Backend API
 
-FitVibe is a fitness and gym management backend API built with Node.js, Express, TypeScript, MongoDB, Kafka, MinIO (S3), and Firebase Cloud Messaging.
+FitVibe is a fitness, gym, and nutrition management backend API built with Node.js, Express, TypeScript, MongoDB, Kafka, MinIO (S3), and Firebase Cloud Messaging.
 
 ---
 
@@ -20,13 +20,14 @@ FitVibe is a fitness and gym management backend API built with Node.js, Express,
     - [Logout](#4-logout)
     - [Update FCM Token](#5-update-fcm-token)
   - [Home](#home)
-    - [Get Home Data (Streak, Water, Training Day)](#6-home-data-daily-login-streak-water--training-day)
-    - [Add Water Cup](#7-add-water-cup)
+    - [Get Home Data (Streak, Water, Training Day, Daily Meals)](#6-home-data-daily-login-streak-water-training-day--daily-meals)
+    - [Log Meal Status](#7-log-meal-status)
+    - [Add Water Cup](#8-add-water-cup)
   - [Settings](#settings)
-    - [Get Water Settings](#8-get-water-settings)
-    - [Update Water Settings](#9-update-water-settings)
+    - [Get Water Settings](#9-get-water-settings)
+    - [Update Water Settings](#10-update-water-settings)
 - [MinIO S3 Storage](#-minio-s3-storage)
-- [Daily Workout Push Notifications](#-daily-workout-push-notifications)
+- [Scheduled Push Notifications (Workouts & Meals)](#-scheduled-push-notifications-workouts--meals)
 - [Project Structure](#-project-structure)
 
 ---
@@ -57,11 +58,6 @@ This starts:
 - **Kafka Broker**: `localhost:9092`
 - **MinIO S3 Storage**: `localhost:9000` (API) & `localhost:9001` (Web Console)
 - **MongoDB**: `localhost:27017`
-
-### MinIO Web Console Login
-- **URL**: `http://localhost:9001`
-- **Username**: `minioadmin`
-- **Password**: `minioadmin`
 
 ---
 
@@ -110,7 +106,7 @@ KAFKA_CLIENT_ID=fitvibe-backend
 
 ## 🌱 Mock Data Seeding
 
-Populate MinIO bucket with exercise media, seed workouts, daily training planners, and a test client user in MongoDB:
+Populate MinIO bucket with exercise media, seed workouts, daily training planners, mock meals, daily meals plan, and a test client user in MongoDB:
 
 ```bash
 npm run seed
@@ -121,7 +117,9 @@ This script:
 2. Uploads sample exercise videos (`pushups_demo.mp4`, `squats_demo.mp4`, etc.).
 3. Seeds mock `Workout` records (Chest, Legs, Core, Cardio).
 4. Seeds `DailyTrainingPlanner` records for today and future days (`isFree: true`).
-5. Creates a default test client account:
+5. Seeds mock `Meal` records (`Oatmeal & Protein Shake`, `Grilled Chicken & Quinoa`, `Salmon & Asparagus`, `Greek Yogurt & Berries`) with split macros (`carbs`, `protein`, `fats`, `calories`) and ingredients list.
+6. Seeds `DailyMeals` plan for today with UI status tags (`completed` / `تم التسجيل`, `pending` / `سجّل الوجبة`, `upcoming` / `قادم`).
+7. Creates a default test client account:
    - **Username**: `testuser`
    - **Password**: `password123`
 
@@ -151,7 +149,6 @@ npm start
 ### 1. Sign Up
 - **Method**: `POST`
 - **URL**: `/api/auth/sign_up`
-- **Headers**: `Content-Type: application/json`
 - **Body**:
 
 ```json
@@ -205,8 +202,6 @@ npm start
 ---
 
 ### 5. Update FCM Token
-Registers/updates the device FCM push token for water and daily workout reminders.
-
 - **Method**: `PATCH`
 - **URL**: `/api/auth/fcm-token`
 - **Body**:
@@ -219,8 +214,8 @@ Registers/updates the device FCM push token for water and daily workout reminder
 
 ---
 
-### 6. Home Data (Daily Login Streak, Water & Training Day)
-Retrieves home screen data for the authenticated client, including login streak, daily water intake log, and today's training day planner.
+### 6. Home Data (Daily Login Streak, Water, Training Day & Daily Meals)
+Retrieves complete home screen data for the client, including login streak, daily water intake log, today's training day planner, and today's nutrition plan.
 
 - **Method**: `GET`
 - **URL**: `/api/home`
@@ -230,7 +225,7 @@ Retrieves home screen data for the authenticated client, including login streak,
 {
   "dailyLogin": {
     "streakCount": 5,
-    "lastLoginDate": "2026-08-28T00:00:00.000Z"
+    "lastLoginDate": "2026-09-04T00:00:00.000Z"
   },
   "water": {
     "today_intake_ml": 500,
@@ -245,20 +240,81 @@ Retrieves home screen data for the authenticated client, including login streak,
     "exercisesCount": 4,
     "totalTime": 40,
     "isCompleted": false,
-    "date": "2026-08-28T00:00:00.000Z",
-    "exercises": [
+    "date": "2026-09-04T00:00:00.000Z",
+    "exercises": [ ... ]
+  },
+  "dailyMeals": {
+    "planId": "66ce7a20123456789abcdef2",
+    "date": "2026-09-04T00:00:00.000Z",
+    "is_complete": false,
+    "isFree": true,
+    "totalCalories": 1850,
+    "totalCarbs": 165,
+    "totalProtein": 150,
+    "totalFats": 57,
+    "meals": [
       {
-        "workoutId": "66ce7a1e123456789abcdef1",
-        "name": "Standard Push-Ups",
-        "category": "Chest & Arms",
-        "difficulty": "Beginner",
-        "video": "http://localhost:9000/fitvibe-media/pushups_demo.mp4",
-        "description": "Classic push-up targeting chest, shoulders, and triceps.",
-        "place": "Home",
-        "duration": 60,
-        "repeatition": 15,
-        "sets": 3,
-        "kilos": 0
+        "meal_type": "Breakfast",
+        "status": "completed",
+        "logged_at": "2026-09-04T08:30:00.000Z",
+        "meal": {
+          "_id": "66ce7a1e123456789abcdef3",
+          "name": "شوفان وبروتين شيك (Oatmeal & Protein Shake)",
+          "calories": 450,
+          "carbs": 55,
+          "protein": 35,
+          "fats": 10,
+          "ingredients": [
+            "Rolled Oats 80g",
+            "Whey Protein 30g",
+            "Almond Milk 250ml",
+            "Banana 1"
+          ],
+          "image": "",
+          "isFree": true
+        }
+      },
+      {
+        "meal_type": "Lunch",
+        "status": "pending",
+        "logged_at": null,
+        "meal": {
+          "_id": "66ce7a1e123456789abcdef4",
+          "name": "دجاج مشوي وكينوا (Grilled Chicken & Quinoa)",
+          "calories": 650,
+          "carbs": 65,
+          "protein": 55,
+          "fats": 18,
+          "ingredients": [
+            "Chicken Breast 200g",
+            "Quinoa 150g",
+            "Steamed Vegetables",
+            "Olive Oil 10ml"
+          ],
+          "image": "",
+          "isFree": true
+        }
+      },
+      {
+        "meal_type": "Dinner",
+        "status": "upcoming",
+        "logged_at": null,
+        "meal": {
+          "_id": "66ce7a1e123456789abcdef5",
+          "name": "سلمون وأسباراغوس (Salmon & Asparagus)",
+          "calories": 550,
+          "carbs": 25,
+          "protein": 45,
+          "fats": 25,
+          "ingredients": [
+            "Fresh Salmon Fillet 200g",
+            "Grilled Asparagus 150g",
+            "Lemon Juice",
+            "Garlic Butter"
+          ],
+          "image": "",
+          "isFree": true
+        }
       }
     ]
   }
@@ -267,19 +323,50 @@ Retrieves home screen data for the authenticated client, including login streak,
 
 ---
 
-### 7. Add Water Cup
+### 7. Log Meal Status
+Updates the status of a specific meal (`completed`, `pending`, `upcoming`) in the user's daily meals plan.
+
+- **Method**: `POST`
+- **URL**: `/api/home/meals/log`
+- **Headers**: `Content-Type: application/json`, Requires active session
+- **Body**:
+
+```json
+{
+  "planId": "66ce7a20123456789abcdef2",
+  "mealType": "Lunch",
+  "status": "completed"
+}
+```
+
+- **Response Example (200 OK)**:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "_id": "66ce7a20123456789abcdef2",
+    "is_complete": false,
+    "meals": [ ... ]
+  }
+}
+```
+
+---
+
+### 8. Add Water Cup
 - **Method**: `POST`
 - **URL**: `/api/home/water/add`
 
 ---
 
-### 8. Get Water Settings
+### 9. Get Water Settings
 - **Method**: `GET`
 - **URL**: `/api/settings/water`
 
 ---
 
-### 9. Update Water Settings
+### 10. Update Water Settings
 - **Method**: `PUT`
 - **URL**: `/api/settings/water`
 
@@ -289,18 +376,24 @@ Retrieves home screen data for the authenticated client, including login streak,
 
 Workout videos and media assets are stored in MinIO object storage bucket `fitvibe-media`.
 - **Initialization**: Automatically executed on server startup via `initMinioBucket()`.
-- **Public Read Access**: Public read bucket policy applied automatically so video URLs (e.g. `http://localhost:9000/fitvibe-media/pushups_demo.mp4`) can be played directly on client applications.
+- **Public Read Access**: Public read bucket policy applied automatically so video URLs can be played directly on client applications.
 
 ---
 
-## 🔔 Daily Workout Push Notifications
+## 🔔 Scheduled Push Notifications (Workouts & Meals)
 
-FitVibe uses KafkaJS + Firebase Admin SDK for event-driven daily notifications:
-- **Kafka Topic**: `workout-reminders`
-- **Producer**: [workoutReminderProducer.ts](file:///home/salah/Projects/github/FitVibe/FiteVibe-Backend/infrastructure/kafka/workoutReminderProducer.ts) triggers daily ticks.
-- **Consumer**: [workoutReminderConsumer.ts](file:///home/salah/Projects/github/FitVibe/FiteVibe-Backend/infrastructure/kafka/workoutReminderConsumer.ts) inspects users, finds today's daily workout planner, and sends FCM push notification:
-  - **Title**: `🏋️ workout of today!`
-  - **Body**: `Hello {first_name}! Today's workout "{planner.name}" ({duration} mins, {count} exercises) is ready. Let's crush it!`
+FitVibe uses KafkaJS + Firebase Admin SDK for event-driven notifications:
+
+1. **Daily Workout Reminder**:
+   - **Topic**: `workout-reminders`
+   - Dispatches daily workout push notifications (`"🏋️ workout of today!"`).
+
+2. **Daily Meal Reminders (UTC)**:
+   - **Topic**: `meal-reminders`
+   - **Breakfast**: 07:00 UTC (08:00 UTC+1) -> `"🥣 Breakfast Time!"`
+   - **Lunch**: 11:00 UTC (12:00 UTC+1) -> `"🍛 Lunch Time!"`
+   - **Snacks**: 15:00 UTC (16:00 UTC+1) -> `"🥗 Snack Time!"`
+   - **Dinner**: 19:00 UTC (20:00 UTC+1) -> `"🍽️ Dinner Time!"`
 
 ---
 
@@ -317,20 +410,18 @@ FiteVibe-Backend/
 │   ├── services.ts       # Dependency injection container
 │   └── controllers.ts    # Controller instances container
 ├── domain/
-│   ├── entities/         # TypeScript interfaces (User, Workout, DailyTrainingPlanner, DailyLogin, etc.)
-│   ├── types/            # Type declarations
-│   └── validator/        # Validation contracts
+│   ├── entities/         # TypeScript interfaces (User, Workout, DailyTrainingPlanner, Meal, DailyMeals, etc.)
+│   └── types/            # Type declarations
 ├── infrastructure/
 │   ├── database/
-│   │   ├── models/       # Mongoose models (userModel, workoutModel, dailyTrainingPlannerModel, etc.)
+│   │   ├── models/       # Mongoose models (userModel, workoutModel, mealModel, dailyMealsModel, etc.)
 │   │   └── MongoDatabase.ts
 │   ├── firebase/         # Firebase Admin SDK & FCM push helpers
-│   ├── kafka/            # KafkaJS client, water & workout producers/consumers
+│   ├── kafka/            # KafkaJS client, water, workout & meal producers/consumers
 │   ├── minio/            # MinIO S3 storage client & helpers
-│   ├── passport_js/      # Passport authentication strategy
-│   └── validators/       # Request validation logic
+│   └── passport_js/      # Passport authentication strategy
 ├── scripts/
-│   └── seedMockData.ts   # Seed script for MinIO media, workouts, planners, and test user
+│   └── seedMockData.ts   # Seed script for MinIO media, workouts, planners, meals, and test user
 ├── docker-compose.yml    # Kafka + MinIO + MongoDB container configuration
 ├── .env                  # Environment configuration
 ├── package.json

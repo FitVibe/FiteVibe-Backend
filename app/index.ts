@@ -10,6 +10,8 @@ import { startWaterReminderProducer } from "@/infrastructure/kafka/waterReminder
 import { startWaterReminderConsumer } from "@/infrastructure/kafka/waterReminderConsumer";
 import { startWorkoutReminderProducer } from "@/infrastructure/kafka/workoutReminderProducer";
 import { startWorkoutReminderConsumer } from "@/infrastructure/kafka/workoutReminderConsumer";
+import { startMealReminderProducer } from "@/infrastructure/kafka/mealReminderProducer";
+import { startMealReminderConsumer } from "@/infrastructure/kafka/mealReminderConsumer";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -37,21 +39,28 @@ app.listen(port, async () => {
     // Initialize MinIO S3 bucket
     await initMinioBucket();
 
-    // Start Kafka water reminder pipeline
+    // Start Kafka notification pipelines
     try {
         await startWaterReminderProducer();
         await startWaterReminderConsumer();
         console.log('[Kafka] Water reminder pipeline started.');
-    } catch (err) {
-        console.error('[Kafka] Failed to start water reminder pipeline:', err);
+    } catch (err: any) {
+        console.warn('[Kafka] Water reminder pipeline skipped (Kafka broker not reachable at localhost:9092)');
     }
 
-    // Start Kafka workout reminder pipeline
     try {
         await startWorkoutReminderProducer();
         await startWorkoutReminderConsumer();
         console.log('[Kafka] Workout reminder pipeline started.');
-    } catch (err) {
-        console.error('[Kafka] Failed to start workout reminder pipeline:', err);
+    } catch (err: any) {
+        console.warn('[Kafka] Workout reminder pipeline skipped (Kafka broker not reachable at localhost:9092)');
+    }
+
+    try {
+        await startMealReminderProducer();
+        await startMealReminderConsumer();
+        console.log('[Kafka] Meal reminder pipeline started.');
+    } catch (err: any) {
+        console.warn('[Kafka] Meal reminder pipeline skipped (Kafka broker not reachable at localhost:9092)');
     }
 });

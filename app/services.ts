@@ -10,9 +10,19 @@ import DrinkWaterTask from "@/infrastructure/database/models/drinkWaterTaskModel
 import DailyTasks from "@/infrastructure/database/models/dailyTasksModel";
 import DailyTrainingPlanner from "@/infrastructure/database/models/dailyTrainingPlannerModel";
 import Workout from "@/infrastructure/database/models/workoutModel";
+import DailyMeals from "@/infrastructure/database/models/dailyMealsModel";
+import Meal from "@/infrastructure/database/models/mealModel";
 
 const mongoDBInstance = new MongoDBDatabase();
 
 export const userService = new UserService(mongoDBInstance, User, Client);
 export const waterService = new WaterService(mongoDBInstance, UserSettings, DrinkWaterTask, DailyTasks);
-export const homeService = new HomeService(mongoDBInstance, DailyLogin, DailyTrainingPlanner, Workout, waterService);
+export const homeService = new HomeService(
+    mongoDBInstance,
+    DailyLogin,
+    DailyTrainingPlanner,
+    Workout,
+    DailyMeals,
+    Meal,
+    waterService
+);

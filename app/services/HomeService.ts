@@ -3,6 +3,8 @@ import { Model } from "mongoose";
 import { DailyLoginEntity } from "@/domain/entities/DailyLoginEntity";
 import { DailyTrainingPlannerEntity } from "@/domain/entities/DailyTrainingPlannerEntity";
 import { WorkoutEntity } from "@/domain/entities/WorkoutEntity";
+import { DailyMealsEntity } from "@/domain/entities/DailyMealsEntity";
+import { MealEntity } from "@/domain/entities/MealEntity";
 import { Types } from "mongoose";
 import WaterService from "./WaterService";
 
@@ -11,6 +13,8 @@ export default class HomeService {
     private dailyLoginModel: Model<DailyLoginEntity>;
     private dailyTrainingPlannerModel: Model<DailyTrainingPlannerEntity>;
     private workoutModel: Model<WorkoutEntity>;
+    private dailyMealsModel: Model<DailyMealsEntity>;
+    private mealModel: Model<MealEntity>;
     private waterService: WaterService;
 
     constructor(
@@ -18,12 +22,16 @@ export default class HomeService {
         dailyLoginModel: Model<DailyLoginEntity>,
         dailyTrainingPlannerModel: Model<DailyTrainingPlannerEntity>,
         workoutModel: Model<WorkoutEntity>,
+        dailyMealsModel: Model<DailyMealsEntity>,
+        mealModel: Model<MealEntity>,
         waterService: WaterService
     ) {
         this.db = db;
         this.dailyLoginModel = dailyLoginModel;
         this.dailyTrainingPlannerModel = dailyTrainingPlannerModel;
         this.workoutModel = workoutModel;
+        this.dailyMealsModel = dailyMealsModel;
+        this.mealModel = mealModel;
         this.waterService = waterService;
     }
 
@@ -126,6 +134,76 @@ export default class HomeService {
             };
         }
 
+        // Fetch Daily Meals Plan for today
+        // Priority 1: Specific daily meals plan for this client today
+        let mealsPlan = await this.dailyMealsModel.findOne({
+            userId: userObjId,
+            date: { $gte: todayMidnight, $lt: tomorrowMidnight }
+        }).populate('meals.mealId');
+
+        // Priority 2: General/Free system daily meals plan for today
+        if (!mealsPlan) {
+            mealsPlan = await this.dailyMealsModel.findOne({
+                $or: [{ userId: { $exists: false } }, { userId: null }],
+                date: { $gte: todayMidnight, $lt: tomorrowMidnight }
+            }).populate('meals.mealId');
+        }
+
+        // Priority 3: Fallback to latest available free system daily meals plan
+        if (!mealsPlan) {
+            mealsPlan = await this.dailyMealsModel.findOne({ isFree: true })
+                .sort({ date: -1 })
+                .populate('meals.mealId');
+        }
+
+        let dailyMeals = null;
+
+        if (mealsPlan) {
+            let totalCalories = 0;
+            let totalCarbs = 0;
+            let totalProtein = 0;
+            let totalFats = 0;
+
+            const mealsFormatted = mealsPlan.meals.map((item: any) => {
+                const mealObj = item.mealId || {};
+                const calories = mealObj.calories || ((mealObj.carbs || 0) * 4 + (mealObj.protein || 0) * 4 + (mealObj.fats || 0) * 9);
+                
+                totalCalories += calories;
+                totalCarbs += mealObj.carbs || 0;
+                totalProtein += mealObj.protein || 0;
+                totalFats += mealObj.fats || 0;
+
+                return {
+                    meal_type: item.meal_type,
+                    status: item.status || 'pending',
+                    logged_at: item.logged_at || null,
+                    meal: {
+                        _id: mealObj._id || item.mealId,
+                        name: mealObj.name || 'Delicious Meal',
+                        calories: calories,
+                        carbs: mealObj.carbs || 0,
+                        protein: mealObj.protein || 0,
+                        fats: mealObj.fats || 0,
+                        ingredients: mealObj.ingredients || [],
+                        image: mealObj.image || '',
+                        isFree: mealObj.isFree !== undefined ? mealObj.isFree : true
+                    }
+                };
+            });
+
+            dailyMeals = {
+                planId: mealsPlan._id,
+                date: mealsPlan.date,
+                is_complete: mealsPlan.is_complete || false,
+                isFree: mealsPlan.isFree,
+                totalCalories,
+                totalCarbs,
+                totalProtein,
+                totalFats,
+                meals: mealsFormatted
+            };
+        }
+
         return {
             dailyLogin: {
                 streakCount: dailyLogin?.streakCount || 1,
@@ -133,6 +211,31 @@ export default class HomeService {
             },
             water,
             trainingDay,
+            dailyMeals,
         };
+    }
+
+    public async logMealStatus(userId: string, planId: string, mealType: string, status: string) {
+        const plan = await this.dailyMealsModel.findById(planId);
+        if (!plan) {
+            throw new Error('Daily meals plan not found');
+        }
+
+        const mealItem = plan.meals.find(m => m.meal_type.toLowerCase() === mealType.toLowerCase());
+        if (!mealItem) {
+            throw new Error(`Meal type ${mealType} not found in this plan`);
+        }
+
+        mealItem.status = status;
+        if (status === 'completed') {
+            mealItem.logged_at = new Date();
+        }
+
+        // Check if all meals in plan are completed
+        const allCompleted = plan.meals.every(m => m.status === 'completed');
+        plan.is_complete = allCompleted;
+
+        await plan.save();
+        return plan;
     }
 }
