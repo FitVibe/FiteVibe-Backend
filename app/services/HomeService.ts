@@ -9,6 +9,8 @@ import { IDailyTrainingPlannerRepository } from "@/domain/repositories/IDailyTra
 import { IDailyMealsRepository } from "@/domain/repositories/IDailyMealsRepository";
 import { IUserRepository } from "@/domain/repositories/IUserRepository";
 
+import ChallengeService from "./ChallengeService";
+
 export default class HomeService {
     private db: MongoDBDatabase;
     private dailyLoginModel: Model<DailyLoginEntity>;
@@ -16,6 +18,7 @@ export default class HomeService {
     private dailyMealsRepo: IDailyMealsRepository;
     private userRepo: IUserRepository;
     private waterService: WaterService;
+    private challengeService?: ChallengeService;
 
     constructor(
         db: MongoDBDatabase,
@@ -23,7 +26,8 @@ export default class HomeService {
         dailyTrainingPlannerRepo: IDailyTrainingPlannerRepository,
         dailyMealsRepo: IDailyMealsRepository,
         userRepo: IUserRepository,
-        waterService: WaterService
+        waterService: WaterService,
+        challengeService?: ChallengeService
     ) {
         this.db = db;
         this.dailyLoginModel = dailyLoginModel;
@@ -31,6 +35,7 @@ export default class HomeService {
         this.dailyMealsRepo = dailyMealsRepo;
         this.userRepo = userRepo;
         this.waterService = waterService;
+        this.challengeService = challengeService;
     }
 
     public async getHomeData(userId: string) {
@@ -268,6 +273,8 @@ export default class HomeService {
             await setCache(cacheKey, dailyMeasures, 86400);
         }
 
+        const challenges = this.challengeService ? await this.challengeService.getPublishedChallenges(userId) : [];
+
         return {
             dailyLogin: {
                 streakCount: dailyLogin?.streakCount || 1,
@@ -277,6 +284,7 @@ export default class HomeService {
             trainingDay,
             dailyMeals,
             dailyMeasures,
+            challenges,
         };
     }
 

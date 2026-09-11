@@ -14,4 +14,5 @@ export const TOPICS = {
     WATER_REMINDERS: 'water-reminders',
     WORKOUT_REMINDERS: 'workout-reminders',
     MEAL_REMINDERS: 'meal-reminders',
+    CHALLENGE_REACTIONS: 'challenge-reactions',
 } as const;

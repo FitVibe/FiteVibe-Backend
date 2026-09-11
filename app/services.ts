@@ -2,6 +2,8 @@ import { MongoDBDatabase } from "@/infrastructure/database/MongoDatabase";
 import UserService from "./services/UserService";
 import HomeService from "./services/HomeService";
 import WaterService from "./services/WaterService";
+import ChallengeService from "./services/ChallengeService";
+import ChallengeCommunityService from "./services/ChallengeCommunityService";
 import User from "@/infrastructure/database/models/userModel";
 import Client from "@/infrastructure/database/models/clientModel";
 import DailyLogin from "@/infrastructure/database/models/dailyLoginModel";
@@ -11,15 +13,31 @@ import DailyTasks from "@/infrastructure/database/models/dailyTasksModel";
 import { MongoUserRepository } from "@/infrastructure/database/repositories/MongoUserRepository";
 import { MongoDailyTrainingPlannerRepository } from "@/infrastructure/database/repositories/MongoDailyTrainingPlannerRepository";
 import { MongoDailyMealsRepository } from "@/infrastructure/database/repositories/MongoDailyMealsRepository";
+import { MongoChallengeRepository } from "@/infrastructure/database/repositories/MongoChallengeRepository";
+import { MongoUserChallengeRepository } from "@/infrastructure/database/repositories/MongoUserChallengeRepository";
+import { MongoChallengeCommunityRepository } from "@/infrastructure/database/repositories/MongoChallengeCommunityRepository";
 
 const mongoDBInstance = new MongoDBDatabase();
 
 export const userRepository = new MongoUserRepository();
 export const dailyTrainingPlannerRepository = new MongoDailyTrainingPlannerRepository();
 export const dailyMealsRepository = new MongoDailyMealsRepository();
+export const challengeRepository = new MongoChallengeRepository();
+export const userChallengeRepository = new MongoUserChallengeRepository();
+export const challengeCommunityRepository = new MongoChallengeCommunityRepository();
 
 export const userService = new UserService(mongoDBInstance, User, Client);
 export const waterService = new WaterService(mongoDBInstance, UserSettings, DrinkWaterTask, DailyTasks);
+
+export const challengeService = new ChallengeService(
+    challengeRepository,
+    userChallengeRepository,
+    userRepository
+);
+
+export const challengeCommunityService = new ChallengeCommunityService(
+    challengeCommunityRepository
+);
 
 export const homeService = new HomeService(
     mongoDBInstance,
@@ -27,5 +45,6 @@ export const homeService = new HomeService(
     dailyTrainingPlannerRepository,
     dailyMealsRepository,
     userRepository,
-    waterService
+    waterService,
+    challengeService
 );

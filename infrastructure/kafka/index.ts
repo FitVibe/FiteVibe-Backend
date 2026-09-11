@@ -4,6 +4,8 @@ import { startWorkoutReminderProducer } from './workoutReminderProducer';
 import { startWorkoutReminderConsumer } from './workoutReminderConsumer';
 import { startMealReminderProducer } from './mealReminderProducer';
 import { startMealReminderConsumer } from './mealReminderConsumer';
+import { startChallengeReactionProducer } from './challengeReactionProducer';
+import { startChallengeReactionConsumer } from './challengeReactionConsumer';
 
 export * from './kafkaClient';
 export * from './waterReminderProducer';
@@ -12,6 +14,8 @@ export * from './workoutReminderProducer';
 export * from './workoutReminderConsumer';
 export * from './mealReminderProducer';
 export * from './mealReminderConsumer';
+export * from './challengeReactionProducer';
+export * from './challengeReactionConsumer';
 
 /**
  * Initializes and starts all Kafka producer and consumer pipelines with graceful connection handling.
@@ -42,5 +46,14 @@ export async function startKafkaPipelines(): Promise<void> {
         console.log('[Kafka] Meal reminder pipeline started.');
     } catch (err: any) {
         console.warn('[Kafka] Meal reminder pipeline skipped (Kafka broker not reachable at localhost:9092)');
+    }
+
+    // Challenge reactions pipeline
+    try {
+        await startChallengeReactionProducer();
+        await startChallengeReactionConsumer();
+        console.log('[Kafka] Challenge reaction pipeline started.');
+    } catch (err: any) {
+        console.warn('[Kafka] Challenge reaction pipeline skipped (Kafka broker not reachable at localhost:9092)');
     }
 }

@@ -1,6 +1,6 @@
 # FitVibe Backend API
 
-FitVibe is a fitness, gym, and nutrition management backend API built with Node.js, Express, TypeScript, MongoDB, Kafka, MinIO (S3), Memcached, and Firebase Cloud Messaging.
+FitVibe is a high-performance fitness, gym, nutrition, and community backend API built with **Node.js**, **Express**, **TypeScript**, **MongoDB**, **Kafka**, **MinIO (S3)**, **Memcached**, and **Firebase Cloud Messaging (FCM)** following strict **Clean Architecture** principles.
 
 ---
 
@@ -9,26 +9,19 @@ FitVibe is a fitness, gym, and nutrition management backend API built with Node.
 - [Prerequisites](#-prerequisites)
 - [Infrastructure Setup (Docker Compose)](#-infrastructure-setup-docker-compose)
 - [Environment Configuration](#-environment-configuration)
-- [Installation](#-installation)
+- [Installation & Scripts](#-installation--scripts)
 - [Mock Data Seeding](#-mock-data-seeding)
 - [Running the Application](#-running-the-application)
+- [Architecture & Design Systems](#-architecture--design-systems)
+  - [Clean Architecture Boundaries](#clean-architecture-boundaries)
+  - [Coach Challenges & Community System](#coach-challenges--community-system)
+  - [Kafka Asynchronous Pipelines](#kafka-asynchronous-pipelines)
+  - [Memcached Strategy & TTL Table](#memcached-strategy--ttl-table)
 - [API Endpoints](#-api-endpoints)
-  - [Auth](#auth)
-    - [Sign Up](#1-sign-up)
-    - [Sign In](#2-sign-in)
-    - [Current User](#3-current-user)
-    - [Logout](#4-logout)
-    - [Update FCM Token](#5-update-fcm-token)
-  - [Home](#home)
-    - [Get Home Data (Streak, Water, Training Day, Daily Meals, Daily Measures)](#6-home-data-daily-login-streak-water-training-day-daily-meals--daily-measures)
-    - [Log Meal Status](#7-log-meal-status)
-    - [Add Water Cup](#8-add-water-cup)
-  - [Settings](#settings)
-    - [Get Water Settings](#9-get-water-settings)
-    - [Update Water Settings](#10-update-water-settings)
-- [Memcached Caching & Domain Calculation Services](#-memcached-caching--domain-calculation-services)
-- [MinIO S3 Storage](#-minio-s3-storage)
-- [Scheduled Push Notifications (Workouts & Meals)](#-scheduled-push-notifications-workouts--meals)
+  - [Auth Endpoints](#auth)
+  - [Home & Daily Measures Endpoints](#home)
+  - [Coach Challenges & Community Endpoints](#coach-challenges--community)
+  - [Settings Endpoints](#settings)
 - [Project Structure](#-project-structure)
 
 ---
@@ -46,10 +39,6 @@ Make sure you have the following installed on your system:
 ## 🐳 Infrastructure Setup (Docker Compose)
 
 FitVibe uses Docker Compose to run Kafka, MinIO S3 storage, MongoDB, and Memcached locally.
-
-### Start Containers
-
-Run the following command in the `FiteVibe-Backend` directory:
 
 ```bash
 docker compose up -d
@@ -96,23 +85,25 @@ KAFKA_CLIENT_ID=fitvibe-backend
 
 ---
 
-## 🚀 Installation
+## 🚀 Installation & Scripts
 
-1. Clone the repository and navigate to the backend directory:
-   ```bash
-   cd FiteVibe-Backend
-   ```
-
-2. Install dependencies:
+1. Install dependencies:
    ```bash
    npm install
    ```
+
+2. Available Commands:
+   - `npm run dev`: Starts hot-reloading development server via `nodemon` and `ts-node`.
+   - `npm run build`: Compiles TypeScript to `dist/` (`tsc`).
+   - `npm run start`: Runs production build from `dist/app/index.js`.
+   - `npm run seed`: Seeds MinIO S3 media, workouts, meals, planners, mock challenges, and test users.
+   - `npm run cache:flush`: Flushes all Memcached cache entries.
 
 ---
 
 ## 🌱 Mock Data Seeding
 
-Populate MinIO bucket with exercise media, seed workouts, daily training planners, mock meals, daily meals plan, and a test client user in MongoDB, and flush Memcached cache:
+Populate MinIO bucket with exercise media, seed workouts, daily training planners, mock meals, daily meals plan, mock community challenges, and a test user:
 
 ```bash
 npm run seed
@@ -120,109 +111,71 @@ npm run seed
 
 ---
 
-## 🏃 Running the Application
+## 🏗 Architecture & Design Systems
 
-### Development Mode (Hot-Reloading)
+### Clean Architecture Boundaries
+FitVibe isolates domain entities, repository contracts, and domain business services from outer frameworks (Express, Mongoose, Kafka, Memcached). All high-level services and event consumers consume **Repository interfaces** rather than direct database models.
 
-```bash
-npm run dev
+```
+FiteVibe-Backend/
+├── domain/            # Pure Entities, Repository Contracts, Calculation Services
+├── infrastructure/    # Concrete DB Repositories, Kafka, Memcached, Firebase, MinIO
+└── app/               # Express Controllers, Services & DI Container
 ```
 
-The server will start at `http://localhost:3000`.
+### Coach Challenges & Community System
+- **Access Types**: `free` vs `premium` (validated against user subscription tier).
+- **Multi-Category Tasks**: Tasks belong to categories (`workout`, `nutrition`, `hydration`, `mindset`).
+- **Points Types**:
+  - **Type 1 (System Tasks)**: Points awarded on system daily task check-ins.
+  - **Type 2 (Coach Custom Content)**: Points awarded strictly on challenge-specific daily task completion.
+- **Per-Challenge Leaderboard ("Classement")**: Ranks participants within a challenge based on total earned points.
+
+### Kafka Asynchronous Pipelines
+Centralized event streams (`infrastructure/kafka/index.ts`):
+- `water-reminders`: Daily water hydration intake push notification ticks.
+- `workout-reminders`: Daily workout training plan push notifications.
+- `meal-reminders`: Scheduled meal log reminders.
+- `challenge-reactions`: High-scale reaction events streamed to background consumer for FCM author push notifications (`"سارة تفاعلت مع منشورك بـ 🔥"`) and Memcached feed cache invalidation.
+
+### Memcached Strategy & TTL Table
+
+| Feature / Key Format | TTL Duration | Invalidation Trigger & Rationale |
+| :--- | :--- | :--- |
+| `daily_measures:{userId}:{date}` | **86,400s (24h)** | Invalidated immediately on meal status update (`logMealStatus`) or at `00:00 UTC` cron. Eliminates costly BMR/MET recalculations. |
+| `challenge:leaderboard:{challengeId}` | **60s (1min)** | Invalidated on task check-in (`checkInTask`). Provides near live rankings while protecting DB under high traffic. |
+| `challenge:posts:{challengeId}:{skip}:{limit}` | **120s (2min)** | Invalidated on new post/comment/reaction or via Kafka reaction consumer. Ensures fast feed scrolling. |
+| `challenges:published:all` | **300s (5min)** | Invalidated on challenge publication. Caches active challenges list. |
 
 ---
 
-## 📡 API Endpoints
+## 📡 API Endpoints Summary
 
-### 6. Home Data (Daily Login Streak, Water, Training Day, Daily Meals & Daily Measures)
-Retrieves complete home screen data for the client, including login streak, daily water intake log, today's training day planner, today's nutrition plan, and cached daily measures metrics ("مقاييس اليوم").
+### Auth
+- `POST /api/auth/signup`: Client account registration.
+- `POST /api/auth/signin`: Local authentication sign in.
+- `GET /api/auth/current_user`: Fetch current authenticated user.
+- `POST /api/auth/logout`: End session.
+- `POST /api/auth/fcm_token`: Register FCM device token for push notifications.
 
-- **Method**: `GET`
-- **URL**: `/api/home`
-- **Response Example (200 OK)**:
+### Home & Daily Measures
+- `GET /api/home`: Retrieves complete home payload: `dailyLogin` streak, `water` intake, `trainingDay` planner, `dailyMeals` plan, `dailyMeasures` metrics (weight, net calories, macro targets), and **`challenges`** list (with `isLocked` and `isEnrolled` flags).
+- `POST /api/home/meals/log`: Updates meal log status (`completed`, `pending`, `upcoming`) and invalidates `daily_measures` cache.
+- `POST /api/home/water/add`: Logs water intake cups.
 
-```json
-{
-  "dailyLogin": {
-    "streakCount": 5,
-    "lastLoginDate": "2026-09-04T00:00:00.000Z"
-  },
-  "water": {
-    "today_intake_ml": 500,
-    "daily_need_ml": 2500,
-    "cup_size_ml": 250,
-    "progress_percentage": 20
-  },
-  "trainingDay": { ... },
-  "dailyMeals": { ... },
-  "dailyMeasures": {
-    "weight": {
-      "current": 75,
-      "goal": 70,
-      "unit": "kg"
-    },
-    "activity": {
-      "workoutTimeMinutes": 45,
-      "burnedCalories": 350
-    },
-    "calories": {
-      "currentNetCalories": 1100,
-      "consumedCalories": 1450,
-      "burnedCalories": 350,
-      "targetCalories": 2100
-    },
-    "macros": {
-      "protein": {
-        "currentGrams": 120,
-        "targetGrams": 160,
-        "calories": 480
-      },
-      "carbs": {
-        "currentGrams": 180,
-        "targetGrams": 220,
-        "calories": 720
-      },
-      "fats": {
-        "currentGrams": 28,
-        "targetGrams": 64,
-        "calories": 252
-      }
-    }
-  }
-}
-```
+### Coach Challenges & Community
+- `GET /api/challenges/:id`: Fetch challenge details and daily task timeline.
+- `POST /api/challenges/:id/join`: Enroll user in challenge (checks Free vs Premium entitlement).
+- `GET /api/challenges/:id/leaderboard`: Single-challenge leaderboard ranking ("Classement").
+- `GET /api/challenges/:id/posts`: Fetch community feed posts for a challenge (Memcached cached).
+- `POST /api/challenges/:id/posts`: Create a community post with text and optional media.
+- `GET /api/challenges/posts/:postId/comments`: Fetch comments for a post.
+- `POST /api/challenges/posts/:postId/comments`: Add a comment to a post.
+- `POST /api/challenges/posts/:postId/react`: Toggle post reaction (`like`, `fire`, `clap`, `muscle`), streaming event to Kafka for background FCM notifications & cache flushing.
 
----
-
-### 7. Log Meal Status
-Updates the status of a specific meal (`completed`, `pending`, `upcoming`) in the user's daily meals plan and automatically invalidates the user's Memcached daily measures entry.
-
-- **Method**: `POST`
-- **URL**: `/api/home/meals/log`
-- **Headers**: `Content-Type: application/json`, Requires active session
-- **Body**:
-
-```json
-{
-  "planId": "66ce7a20123456789abcdef2",
-  "mealType": "Lunch",
-  "status": "completed"
-}
-```
-
----
-
-## ⚡ Memcached Caching & Domain Calculation Services
-
-- **Domain Calculation Service**: Encapsulated pure calculation methods inside `domain/services/MeasureCalculationService.ts`:
-  - `calculateMealMacros()`
-  - `calculateMacroCalories()`
-  - `calculateWorkoutActivity()`
-  - `calculateNetCalories()`
-- **Memcached Caching**:
-  - Key format: `daily_measures:{userId}:{YYYY-MM-DD}`.
-  - Invalidation: Cache evicted immediately upon meal status changes (`POST /api/home/meals/log`) or profile updates.
-  - Midnight Cleanup: Automated cron job (`0 0 * * *` UTC) flushes daily measure cache at midnight.
+### Settings
+- `GET /api/settings/water`: Fetch user water reminder settings.
+- `POST /api/settings/water`: Update water intake daily target and reminder interval.
 
 ---
 
@@ -231,32 +184,32 @@ Updates the status of a specific meal (`completed`, `pending`, `upcoming`) in th
 ```text
 FiteVibe-Backend/
 ├── app/
-│   ├── controllers/      # Auth, Home, Water controllers
+│   ├── controllers/      # Auth, Home, Water, Challenge controllers
 │   ├── middlewares/      # Express middlewares (isAuthenticated)
-│   ├── routes/           # Express router definitions
-│   ├── services/         # UserService, HomeService, WaterService
+│   ├── routes/           # Auth, Home, Settings, Challenge routers
+│   ├── services/         # UserService, HomeService, WaterService, ChallengeService, ChallengeCommunityService
 │   ├── index.ts          # Server entry point
-│   ├── services.ts       # Dependency injection container
+│   ├── services.ts       # Dependency injection container (Repositories & Services)
 │   └── controllers.ts    # Controller instances container
 ├── domain/
-│   ├── entities/         # TypeScript interfaces (User, Workout, DailyTrainingPlanner, Meal, DailyMeals, etc.)
-│   ├── repositories/     # Repository interfaces contracts (IUserRepository, IDailyMealsRepository, etc.)
-│   └── services/         # Domain Calculation Services (MeasureCalculationService)
+│   ├── entities/         # TypeScript interfaces (User, Workout, DailyTrainingPlanner, Challenge, UserChallenge, etc.)
+│   ├── repositories/     # Repository interface contracts (IUserRepository, IChallengeRepository, etc.)
+│   └── services/         # Pure Calculation Services (MeasureCalculationService, ChallengePointService)
 ├── infrastructure/
-│   ├── cron/             # Centralized cron jobs index (startCronJobs)
+│   ├── cron/             # Centralized cron jobs (startCronJobs)
 │   ├── database/
-│   │   ├── models/       # Mongoose models (userModel, workoutModel, mealModel, etc.)
-│   │   └── repositories/ # Concrete Mongoose repository implementations (MongoUserRepository, etc.)
-
-│   ├── firebase/         # Firebase Admin SDK & FCM push helpers
-│   ├── kafka/            # Centralized Kafka producers & consumers index (startKafkaPipelines)
-│   ├── memcached/        # Memcached client & midnight cron invalidation
-│   ├── minio/            # MinIO S3 storage client & helpers
+│   │   ├── models/       # Mongoose models (userModel, challengeModel, userChallengeModel, etc.)
+│   │   └── repositories/ # Concrete Mongoose repositories (MongoUserRepository, MongoChallengeRepository, etc.)
+│   ├── firebase/         # Firebase Admin SDK & FCM push notification helpers
+│   ├── kafka/            # Kafka producers & consumers (Water, Workout, Meal, Challenge Reactions)
+│   ├── memcached/        # Memcached client & cache invalidation helpers
+│   ├── minio/            # MinIO S3 object storage client
 │   └── passport_js/      # Passport authentication strategy
 ├── scripts/
-│   └── seedMockData.ts   # Seed script for MinIO media, workouts, planners, meals, and test user
-├── docker-compose.yml    # Kafka + MinIO + MongoDB + Memcached container configuration
-├── .env                  # Environment configuration
+│   ├── seedMockData.ts   # Seed script for MinIO media, workouts, planners, meals, challenges, & test user
+│   └── flushCache.ts     # CLI script to flush Memcached cache
+├── docker-compose.yml    # Kafka + MinIO + MongoDB + Memcached configuration
+├── .env                  # Environment variables
 ├── package.json
 └── tsconfig.json
 ```

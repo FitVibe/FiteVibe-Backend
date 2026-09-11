@@ -8,6 +8,7 @@ import Meal from '../infrastructure/database/models/mealModel';
 import DailyMeals from '../infrastructure/database/models/dailyMealsModel';
 import User from '../infrastructure/database/models/userModel';
 import UserSettings from '../infrastructure/database/models/userSettingsModel';
+import Challenge from '../infrastructure/database/models/challengeModel';
 import { flushCache } from '../infrastructure/memcached/memcachedClient';
 
 
@@ -31,19 +32,30 @@ async function seed() {
         'hex'
     );
 
-    console.log('Uploading sample exercise videos to MinIO...');
+    console.log('Uploading sample media to MinIO...');
+    const dummyImageBuffer = Buffer.from(
+        '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010d0a2db40000000049454e44ae426082',
+        'hex'
+    );
+
     const videoFiles = [
-        { name: 'pushups_demo.mp4', title: 'Push Ups Demo' },
-        { name: 'squats_demo.mp4', title: 'Bodyweight Squats Demo' },
-        { name: 'dumbbell_press_demo.mp4', title: 'Dumbbell Press Demo' },
-        { name: 'plank_demo.mp4', title: 'Plank Hold Demo' },
-        { name: 'jumping_jacks_demo.mp4', title: 'Jumping Jacks Demo' },
+        { name: 'pushups_demo.mp4', title: 'Push Ups Demo', isVideo: true },
+        { name: 'squats_demo.mp4', title: 'Bodyweight Squats Demo', isVideo: true },
+        { name: 'dumbbell_press_demo.mp4', title: 'Dumbbell Press Demo', isVideo: true },
+        { name: 'plank_demo.mp4', title: 'Plank Hold Demo', isVideo: true },
+        { name: 'jumping_jacks_demo.mp4', title: 'Jumping Jacks Demo', isVideo: true },
+        { name: 'hydration_challenge.png', title: 'Hydration Challenge Image', isVideo: false },
+        { name: 'hydration_banner.png', title: 'Hydration Challenge Banner', isVideo: false },
+        { name: 'muscle_burn_challenge.png', title: 'Muscle Burn Challenge Image', isVideo: false },
+        { name: 'muscle_burn_banner.png', title: 'Muscle Burn Challenge Banner', isVideo: false },
     ];
 
     const uploadedUrls: Record<string, string> = {};
     for (const file of videoFiles) {
         try {
-            const url = await uploadFile(file.name, dummyVideoBuffer, 'video/mp4');
+            const buffer = file.isVideo ? dummyVideoBuffer : dummyImageBuffer;
+            const contentType = file.isVideo ? 'video/mp4' : 'image/png';
+            const url = await uploadFile(file.name, buffer, contentType);
             uploadedUrls[file.name] = url;
             console.log(`Uploaded ${file.name} -> ${url}`);
         } catch (err) {
@@ -58,6 +70,7 @@ async function seed() {
     await DailyTrainingPlanner.deleteMany({});
     await Meal.deleteMany({});
     await DailyMeals.deleteMany({});
+    await Challenge.deleteMany({});
     await flushCache();
 
 
@@ -337,6 +350,48 @@ async function seed() {
         });
         console.log(`Created UserSettings for test user.`);
     }
+
+    // 8. Seed Mock Challenges (Free Hydration & Premium Muscle Burn)
+    console.log('Seeding mock Community Challenges...');
+    await Challenge.create([
+        {
+            createdBy: user._id,
+            title: 'تحدي الترطيب 7 أيام',
+            description: 'تحدي يومي للوصول لشرب 2.5 لتر ماء يومياً لبناء عادة صحية مستدامة.',
+            image: uploadedUrls['hydration_challenge.png'] || 'https://via.placeholder.com/300x200?text=Hydration+Challenge',
+            bannerImage: uploadedUrls['hydration_banner.png'] || 'https://via.placeholder.com/800x400?text=Hydration+Banner',
+            accessType: 'free',
+            categories: ['hydration'],
+            durationDays: 7,
+            period: {
+                startDate: new Date(),
+                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            },
+            isPublished: true,
+            challengeType: 'type1_system_daily_tasks',
+            dailyTasks: [],
+            participantsCount: 248,
+        },
+        {
+            createdBy: user._id,
+            title: 'تحدي حرق العضلات الاحترافي',
+            description: 'تحدي احترافي لمدة 30 يوم لبناء وتضخيم العضلات وحرق الدهون مع متابعة المدرب.',
+            image: uploadedUrls['muscle_burn_challenge.png'] || 'https://via.placeholder.com/300x200?text=Muscle+Burn+Challenge',
+            bannerImage: uploadedUrls['muscle_burn_banner.png'] || 'https://via.placeholder.com/800x400?text=Muscle+Burn+Banner',
+            accessType: 'premium',
+            categories: ['workout'],
+            durationDays: 30,
+            period: {
+                startDate: new Date(),
+                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            },
+            isPublished: true,
+            challengeType: 'type2_coach_custom_tasks',
+            dailyTasks: [],
+            participantsCount: 512,
+        },
+    ]);
+    console.log('Seeded mock Challenges successfully.');
 
     console.log('\n--- Mock Data Seeding Completed Successfully! ---');
     await mongoose.connection.close();

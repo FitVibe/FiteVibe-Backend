@@ -8,6 +8,9 @@ import DailyMeals from './dailyMealsModel';
 import DailyLogin from './dailyLoginModel';
 import DailyTasks from './dailyTasksModel';
 import DrinkWaterTask from './drinkWaterTaskModel';
+import Challenge from './challengeModel';
+import UserChallenge from './userChallengeModel';
+import { ChallengePost, ChallengePostComment, ChallengePostReaction } from './challengeCommunityModel';
 
 export {
     User,
@@ -20,4 +23,9 @@ export {
     DailyLogin,
     DailyTasks,
     DrinkWaterTask,
+    Challenge,
+    UserChallenge,
+    ChallengePost,
+    ChallengePostComment,
+    ChallengePostReaction,
 };
