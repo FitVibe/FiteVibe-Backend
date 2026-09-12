@@ -4,12 +4,12 @@
   "description": "This is the backend API of FiteVibe project which is a gym app.",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --ignore dist/ --exec \"tsc && ts-node -r tsconfig-paths/register app/index.ts\"",
+    "dev": "nodemon",
     "seed": "ts-node -r tsconfig-paths/register scripts/seedMockData.ts",
     "cache:flush": "ts-node -r tsconfig-paths/register infrastructure/memcached/flushCache.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "node dist/app/index.js"
+    "start": "node -r module-alias/register dist/app/index.js"
   },
   "keywords": [],
   "author": "",

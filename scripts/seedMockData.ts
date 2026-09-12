@@ -12,7 +12,7 @@ import Challenge from '../infrastructure/database/models/challengeModel';
 import { flushCache } from '../infrastructure/memcached/memcachedClient';
 
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/fitvibe';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27018/fitvibe';
 
 async function seed() {
     console.log('--- Starting FitVibe Mock Data Seeding ---');

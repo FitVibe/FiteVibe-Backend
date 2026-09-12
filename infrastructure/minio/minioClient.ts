@@ -67,5 +67,7 @@ export async function uploadFile(
  */
 export function getObjectUrl(objectName: string): string {
     const protocol = useSSL ? 'https' : 'http';
-    return `${protocol}://${endPoint}:${port}/${BUCKET_NAME}/${objectName}`;
+    const host = process.env.MINIO_PUBLIC_HOST || endPoint;
+    const publicPort = process.env.MINIO_PUBLIC_PORT || port;
+    return `${protocol}://${host}:${publicPort}/${BUCKET_NAME}/${objectName}`;
 }

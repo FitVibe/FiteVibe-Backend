@@ -38,16 +38,17 @@ Make sure you have the following installed on your system:
 
 ## 🐳 Infrastructure Setup (Docker Compose)
 
-FitVibe uses Docker Compose to run Kafka, MinIO S3 storage, MongoDB, and Memcached locally.
+FitVibe uses Docker Compose to run the Node Backend API, Kafka, MinIO S3 storage, MongoDB, and Memcached locally.
 
 ```bash
 docker compose up -d
 ```
 
 This starts:
+- **Backend API**: `localhost:3000`
 - **Kafka Broker**: `localhost:9092`
 - **MinIO S3 Storage**: `localhost:9000` (API) & `localhost:9001` (Web Console)
-- **MongoDB**: `localhost:27017`
+- **MongoDB**: `localhost:27018`
 - **Memcached**: `localhost:11211`
 
 ---
@@ -58,7 +59,7 @@ Create a `.env` file in `FiteVibe-Backend` (or use `.env.example` as a template)
 
 ```env
 PORT=3000
-MONGO_URI=mongodb://localhost:27017/fitvibe
+MONGO_URI=mongodb://localhost:27018/fitvibe
 SESSION_SECRET=fitvibe_secret_key
 
 # MinIO (S3 Object Storage)

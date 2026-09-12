@@ -8,9 +8,9 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -32,13 +32,44 @@ services:
     image: mongo:latest
     container_name: fitvibe-mongo
     ports:
-      - "27017:27017"
+      - "27018:27017"
 
   memcached:
     image: memcached:alpine
     container_name: fitvibe-memcached
     ports:
       - "11211:11211"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fitvibe-backend:latest
+    container_name: fitvibe-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: npm run dev
+    env_file:
+      - .env
+    environment:
+      - PORT=3000
+      - MONGO_URI=mongodb://mongo:27017/fitvibe
+      - KAFKA_BROKER=kafka:29092
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_PUBLIC_HOST=localhost
+      - MINIO_PUBLIC_PORT=9000
+      - MEMCACHED_HOST=memcached
+      - MEMCACHED_PORT=11211
+    depends_on:
+      - mongo
+      - memcached
+      - minio
+      - kafka
 
 
 
