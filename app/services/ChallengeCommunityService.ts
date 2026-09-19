@@ -1,12 +1,18 @@
 import { IChallengeCommunityRepository } from "@/domain/repositories/IChallengeCommunityRepository";
 import { getCache, setCache, delCache } from "@/infrastructure/memcached/memcachedClient";
 import { publishReactionEvent } from "@/infrastructure/kafka/challengeReactionProducer";
+import NotificationService from "./NotificationService";
 
 export default class ChallengeCommunityService {
     private communityRepo: IChallengeCommunityRepository;
+    private notificationService?: NotificationService;
 
-    constructor(communityRepo: IChallengeCommunityRepository) {
+    constructor(
+        communityRepo: IChallengeCommunityRepository,
+        notificationService?: NotificationService
+    ) {
         this.communityRepo = communityRepo;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -76,6 +82,18 @@ export default class ChallengeCommunityService {
         const post = await this.communityRepo.getPostById(postId);
         if (post) {
             await delCache(`challenge:posts:${post.challengeId}`);
+
+            // Notify post author (DB save + FCM push)
+            if (this.notificationService) {
+                const authorId = ((post.userId as any)?._id || post.userId).toString();
+                await this.notificationService.notifyPostComment(
+                    authorId,
+                    userId,
+                    postId,
+                    post.challengeId.toString(),
+                    content
+                );
+            }
         }
 
         return comment;

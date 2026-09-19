@@ -176,6 +176,11 @@ Centralized event streams (`infrastructure/kafka/index.ts`):
 - `POST /api/challenges/posts/:postId/comments`: Add a comment to a post.
 - `POST /api/challenges/posts/:postId/react`: Toggle post reaction (`like`, `fire`, `clap`, `muscle`), streaming event to Kafka for background FCM notifications & cache flushing.
 
+### Notifications
+- `GET /api/notifications`: Fetch paginated list of social notifications for current user (`skip`, `limit` supported; returns `notifications`, `total`, `unreadCount`).
+- `PATCH /api/notifications/:id/read`: Mark a specific notification as read.
+- `PATCH /api/notifications/read-all`: Mark all notifications for current user as read.
+
 ### Settings
 - `GET /api/settings/water`: Fetch user water reminder settings.
 - `POST /api/settings/water`: Update water intake daily target and reminder interval.

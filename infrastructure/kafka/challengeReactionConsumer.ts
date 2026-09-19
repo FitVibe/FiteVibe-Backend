@@ -1,7 +1,6 @@
 import { kafka, TOPICS } from './kafkaClient';
-import { sendPushNotification } from '@/infrastructure/firebase/firebaseAdmin';
 import { delCache } from '../memcached/memcachedClient';
-import { userRepository, challengeCommunityRepository } from '@/app/services';
+import { challengeCommunityRepository, notificationService } from '@/app/services';
 
 const consumer = kafka.consumer({ groupId: 'fitvibe-challenge-reactions-group' });
 
@@ -28,40 +27,17 @@ export async function startChallengeReactionConsumer(): Promise<void> {
                     await delCache(`challenge:posts:${post.challengeId}`);
                 }
 
-                // 3. Push Notification Action: Notify Post Author via User Repository
+                // 3. Notification Action: Persist in DB and send FCM push notification to Post Author
                 const authorId = ((post.userId as any)?._id || post.userId).toString();
                 if (authorId !== actorUserId) {
-                    const [authorUser, actorUser] = await Promise.all([
-                        userRepository.findById(authorId),
-                        userRepository.findById(actorUserId),
-                    ]);
-
-                    if (authorUser && authorUser.fcm_device_token) {
-                        const actorName = actorUser?.first_name || actorUser?.username || 'أحد المستخدمين';
-                        const emojiMap: Record<string, string> = {
-                            like: '❤️',
-                            fire: '🔥',
-                            clap: '👏',
-                            muscle: '💪',
-                        };
-                        const emoji = emojiMap[reactionType] || '❤️';
-
-                        const title = 'تفاعل جديد على منشورك!';
-                        const body = `${actorName} تفاعل مع منشورك بـ ${emoji}`;
-
-                        const sent = await sendPushNotification(
-                            authorUser.fcm_device_token,
-                            title,
-                            body,
-                            { type: 'post_reaction', postId: postId.toString(), challengeId: post.challengeId.toString() }
-                        );
-
-                        if (sent) {
-                            console.log(`[Kafka Consumer] ✅ FCM push notification sent to author ${authorId}`);
-                        } else {
-                            console.warn(`[Kafka Consumer] ⚠️ FCM push notification failed for author ${authorId}`);
-                        }
-                    }
+                    await notificationService.notifyPostReaction(
+                        authorId,
+                        actorUserId,
+                        postId.toString(),
+                        post.challengeId ? post.challengeId.toString() : '',
+                        reactionType
+                    );
+                    console.log(`[Kafka Consumer] ✅ Notification saved to DB and FCM dispatched for author ${authorId}`);
                 }
             } catch (err) {
                 console.error('[Kafka Consumer] Error processing reaction message:', err);

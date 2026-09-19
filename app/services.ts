@@ -16,6 +16,8 @@ import { MongoDailyMealsRepository } from "@/infrastructure/database/repositorie
 import { MongoChallengeRepository } from "@/infrastructure/database/repositories/MongoChallengeRepository";
 import { MongoUserChallengeRepository } from "@/infrastructure/database/repositories/MongoUserChallengeRepository";
 import { MongoChallengeCommunityRepository } from "@/infrastructure/database/repositories/MongoChallengeCommunityRepository";
+import { MongoNotificationRepository } from "@/infrastructure/database/repositories/MongoNotificationRepository";
+import NotificationService from "./services/NotificationService";
 
 const mongoDBInstance = new MongoDBDatabase();
 
@@ -25,9 +27,15 @@ export const dailyMealsRepository = new MongoDailyMealsRepository();
 export const challengeRepository = new MongoChallengeRepository();
 export const userChallengeRepository = new MongoUserChallengeRepository();
 export const challengeCommunityRepository = new MongoChallengeCommunityRepository();
+export const notificationRepository = new MongoNotificationRepository();
 
 export const userService = new UserService(mongoDBInstance, User, Client);
 export const waterService = new WaterService(mongoDBInstance, UserSettings, DrinkWaterTask, DailyTasks);
+
+export const notificationService = new NotificationService(
+    notificationRepository,
+    userRepository
+);
 
 export const challengeService = new ChallengeService(
     challengeRepository,
@@ -36,7 +44,8 @@ export const challengeService = new ChallengeService(
 );
 
 export const challengeCommunityService = new ChallengeCommunityService(
-    challengeCommunityRepository
+    challengeCommunityRepository,
+    notificationService
 );
 
 export const homeService = new HomeService(
