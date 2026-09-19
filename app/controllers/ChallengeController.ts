@@ -17,7 +17,10 @@ export default class ChallengeController {
     public getPublishedChallenges = async (req: Request, res: Response): Promise<void> => {
         try {
             const user = req.user as any;
-            const challenges = await this.challengeService.getPublishedChallenges(user._id.toString());
+            const skip = parseInt(req.query.skip as string || '0', 10);
+            const limit = parseInt(req.query.limit as string || '20', 10);
+
+            const challenges = await this.challengeService.getPublishedChallenges(user._id.toString(), skip, limit);
             res.status(200).json({ status: 'success', data: challenges });
         } catch (error: any) {
             console.error('Error fetching published challenges:', error);

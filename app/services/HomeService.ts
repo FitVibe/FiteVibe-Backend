@@ -273,7 +273,8 @@ export default class HomeService {
             await setCache(cacheKey, dailyMeasures, 86400);
         }
 
-        const challenges = this.challengeService ? await this.challengeService.getPublishedChallenges(userId) : [];
+        const challengesRes = this.challengeService ? await this.challengeService.getPublishedChallenges(userId, 0, 10) : null;
+        const challenges = challengesRes ? (Array.isArray(challengesRes) ? challengesRes : challengesRes.challenges) : [];
 
         return {
             dailyLogin: {

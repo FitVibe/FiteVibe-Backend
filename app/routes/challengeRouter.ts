@@ -5,6 +5,7 @@ import { isAuthenticated } from '../middlewares/authMiddleware';
 const router = Router();
 
 // Challenge Management & Discovery
+router.get('/', isAuthenticated, challengeController.getPublishedChallenges);
 router.get('/:id', isAuthenticated, challengeController.getChallengeDetails);
 router.post('/:id/join', isAuthenticated, challengeController.joinChallenge);
 router.get('/:id/leaderboard', isAuthenticated, challengeController.getChallengeLeaderboard);

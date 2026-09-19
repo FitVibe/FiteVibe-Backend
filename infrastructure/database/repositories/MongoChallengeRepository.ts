@@ -30,12 +30,23 @@ export class MongoChallengeRepository implements IChallengeRepository {
         return !!result;
     }
 
-    async findPublishedChallenges(accessType?: string): Promise<ChallengeEntity[]> {
+    async findPublishedChallenges(accessType?: string, skip: number = 0, limit: number = 20): Promise<ChallengeEntity[]> {
         const query: Record<string, any> = { isPublished: true };
         if (accessType) {
             query.accessType = accessType;
         }
-        return await Challenge.find(query).sort({ createdAt: -1 });
+        return await Challenge.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+    }
+
+    async countPublishedChallenges(accessType?: string): Promise<number> {
+        const query: Record<string, any> = { isPublished: true };
+        if (accessType) {
+            query.accessType = accessType;
+        }
+        return await Challenge.countDocuments(query);
     }
 
     async incrementParticipantCount(challengeId: string | Types.ObjectId): Promise<void> {

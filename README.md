@@ -166,6 +166,7 @@ Centralized event streams (`infrastructure/kafka/index.ts`):
 - `POST /api/home/water/add`: Logs water intake cups.
 
 ### Coach Challenges & Community
+- `GET /api/challenges`: Fetch paginated list of published challenges (`skip`, `limit` query parameters supported).
 - `GET /api/challenges/:id`: Fetch challenge details and daily task timeline.
 - `POST /api/challenges/:id/join`: Enroll user in challenge (checks Free vs Premium entitlement).
 - `GET /api/challenges/:id/leaderboard`: Single-challenge leaderboard ranking ("Classement").

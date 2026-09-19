@@ -22,25 +22,23 @@ export default class ChallengeService {
     /**
      * Lists all published challenges with user-specific enrollment and lock status.
      */
-    public async getPublishedChallenges(userId: string) {
+    public async getPublishedChallenges(userId: string, skip: number = 0, limit: number = 20) {
         const user = await this.userRepo.findById(userId);
         const isPremiumUser = (user as any)?.account_type === 'premium' || (user as any)?.client?.account_type === 'premium';
 
-        const cacheKey = `challenges:published:all`;
-        let challenges = await getCache<any[]>(cacheKey);
+        const challenges = (await this.challengeRepo.findPublishedChallenges(undefined, skip, limit)) || [];
+        const total = typeof this.challengeRepo.countPublishedChallenges === 'function'
+            ? (await this.challengeRepo.countPublishedChallenges())
+            : challenges.length;
 
-        if (!challenges) {
-            challenges = await this.challengeRepo.findPublishedChallenges();
-            await setCache(cacheKey, challenges, 300); // 5 minutes cache
-        }
-
-        const userChallenges = await this.userChallengeRepo.findActiveUserChallenges(userId);
+        const userChallenges = (await this.userChallengeRepo.findActiveUserChallenges(userId)) || [];
         const enrolledMap = new Map<string, any>();
         userChallenges.forEach(uc => enrolledMap.set(uc.challengeId.toString(), uc));
 
-        return challenges.map(ch => {
-            const isEnrolled = enrolledMap.has(ch._id.toString());
-            const userProgress = enrolledMap.get(ch._id.toString());
+        const challengesFormatted = challenges.map(ch => {
+            const chId = ch._id ? ch._id.toString() : '';
+            const isEnrolled = chId ? enrolledMap.has(chId) : false;
+            const userProgress = chId ? enrolledMap.get(chId) : null;
             const isLocked = ch.accessType === 'premium' && !isPremiumUser;
 
             return {
@@ -65,6 +63,14 @@ export default class ChallengeService {
                 } : null,
             };
         });
+
+        return {
+            challenges: challengesFormatted,
+            total,
+            skip,
+            limit,
+            hasMore: skip + challengesFormatted.length < total
+        };
     }
 
     /**
