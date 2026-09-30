@@ -42,4 +42,43 @@ export default class HomeController {
             res.status(500).json({ message: error.message || 'Internal server error' });
         }
     };
+
+    public completeWorkout = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const user = req.user as any;
+            const { plannerId } = req.body;
+
+            if (!plannerId) {
+                res.status(400).json({ message: 'plannerId is required' });
+                return;
+            }
+
+            const completedPlan = await this.homeService.completeWorkout(
+                user._id.toString(),
+                plannerId
+            );
+
+            res.status(200).json({ status: 'success', data: completedPlan });
+        } catch (error: any) {
+            console.error('Error completing workout:', error);
+            res.status(500).json({ message: error.message || 'Internal server error' });
+        }
+    };
+
+    public getPlannerDetails = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { plannerId } = req.params;
+
+            if (!plannerId) {
+                res.status(400).json({ message: 'plannerId is required' });
+                return;
+            }
+
+            const plannerDetails = await this.homeService.getPlannerDetails(plannerId);
+            res.status(200).json({ status: 'success', data: plannerDetails });
+        } catch (error: any) {
+            console.error('Error fetching planner details:', error);
+            res.status(500).json({ message: error.message || 'Internal server error' });
+        }
+    };
 }

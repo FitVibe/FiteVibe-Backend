@@ -149,6 +149,21 @@ Centralized event streams (`infrastructure/kafka/index.ts`):
 | `challenge:posts:{challengeId}:{skip}:{limit}` | **120s (2min)** | Invalidated on new post/comment/reaction or via Kafka reaction consumer. Ensures fast feed scrolling. |
 | `challenges:published:all` | **300s (5min)** | Invalidated on challenge publication. Caches active challenges list. |
 
+### 📝 Exercise Description Markdown Formatting
+Exercise descriptions in `Workout.description` support structured Markdown headings (`##`) parsed by frontends:
+```markdown
+## طريقة الأداء الصحيحة
+1. استلقِ على الأرض مع وضع اليدين بعرض الكتفين
+2. ادفع جسمك للأعلى حتى تستقيم الذراعان
+
+## نصيحة التنفس
+شهيق عند النزول — زفير عند الدفع للأعلى
+
+## الأخطاء الشائعة
+- ترك الوسط يتدلى للأسفل
+- فتح المرفقين بزاوية 90 درجة
+```
+
 ---
 
 ## 📡 API Endpoints Summary
@@ -161,7 +176,9 @@ Centralized event streams (`infrastructure/kafka/index.ts`):
 - `POST /api/auth/fcm_token`: Register FCM device token for push notifications.
 
 ### Home & Daily Measures
-- `GET /api/home`: Retrieves complete home payload: `dailyLogin` streak, `water` intake, `trainingDay` planner, `dailyMeals` plan, `dailyMeasures` metrics (weight, net calories, macro targets), and **`challenges`** list (with `isLocked` and `isEnrolled` flags).
+- `GET /api/home`: Retrieves complete home payload: `dailyLogin` streak, `water` intake, `trainingDay` planner (populated exercises), `dailyMeals` plan, `dailyMeasures` metrics (weight, net calories, macro targets), and **`challenges`** list (with `isLocked` and `isEnrolled` flags).
+- `GET /api/home/planner/:plannerId`: Fetches full details for a specific daily training planner by `plannerId` (including populated exercise names, categories, video URLs, and Markdown descriptions).
+- `POST /api/home/workout/complete`: Marks a daily training planner as completed (`isCompleted: true`). Clones shared/free template planners (`userId: null`) into user-specific records for the current user, and invalidates `daily_measures` cache.
 - `POST /api/home/meals/log`: Updates meal log status (`completed`, `pending`, `upcoming`) and invalidates `daily_measures` cache.
 - `POST /api/home/water/add`: Logs water intake cups.
 

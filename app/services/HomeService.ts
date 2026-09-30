@@ -300,4 +300,74 @@ export default class HomeService {
 
         return plan;
     }
+
+    public async completeWorkout(userId: string, plannerId: string) {
+        const planner = await this.dailyTrainingPlannerRepo.findById(plannerId);
+        if (!planner) {
+            throw new Error('Daily training planner not found');
+        }
+
+        let updatedPlanner;
+
+        if (!planner.userId) {
+            // Shared/free system planner — clone for this specific user
+            const exercisesClean = planner.exercises.map((item: any) => ({
+                workoutId: item.workoutId?._id || item.workoutId,
+                duration: item.duration,
+                repeatition: item.repeatition,
+                sets: item.sets,
+                kilos: item.kilos
+            }));
+
+            updatedPlanner = await this.dailyTrainingPlannerRepo.create({
+                userId: new Types.ObjectId(userId) as any,
+                date: planner.date,
+                name: planner.name,
+                duration: planner.duration,
+                isFree: planner.isFree,
+                exercises: exercisesClean,
+                isCompleted: true
+            });
+        } else {
+            // User-specific planner — update in place
+            updatedPlanner = await this.dailyTrainingPlannerRepo.update(plannerId, {
+                isCompleted: true
+            });
+        }
+
+        // Invalidate Memcached daily measures cache for user
+        await clearUserDailyMeasures(userId);
+
+        return updatedPlanner;
+    }
+
+    public async getPlannerDetails(plannerId: string) {
+        const planner = await this.dailyTrainingPlannerRepo.findById(plannerId);
+        if (!planner) {
+            throw new Error('Daily training planner not found');
+        }
+
+        return {
+            plannerId: planner._id,
+            name: planner.name,
+            isFree: planner.isFree,
+            exercisesCount: planner.exercises ? planner.exercises.length : 0,
+            totalTime: planner.duration,
+            isCompleted: planner.isCompleted || false,
+            date: planner.date,
+            exercises: planner.exercises.map((item: any) => ({
+                workoutId: item.workoutId?._id || item.workoutId,
+                name: item.workoutId?.name || 'Workout Exercise',
+                category: item.workoutId?.category || '',
+                difficulty: item.workoutId?.difficulty || '',
+                video: item.workoutId?.video || '',
+                description: item.workoutId?.description || '',
+                place: item.workoutId?.place || '',
+                duration: item.duration,
+                repeatition: item.repeatition,
+                sets: item.sets,
+                kilos: item.kilos
+            }))
+        };
+    }
 }

@@ -10,7 +10,7 @@ import DailyTasks from './dailyTasksModel';
 import DrinkWaterTask from './drinkWaterTaskModel';
 import Challenge from './challengeModel';
 import UserChallenge from './userChallengeModel';
-import { ChallengePost, ChallengePostComment, ChallengePostReaction } from './challengeCommunityModel';
+import { Post, Comment, Reaction } from './challengeCommunityModel';
 
 export {
     User,
@@ -25,7 +25,7 @@ export {
     DrinkWaterTask,
     Challenge,
     UserChallenge,
-    ChallengePost,
-    ChallengePostComment,
-    ChallengePostReaction,
+    Post,
+    Comment,
+    Reaction,
 };

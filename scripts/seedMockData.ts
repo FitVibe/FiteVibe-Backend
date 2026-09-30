@@ -81,8 +81,19 @@ async function seed() {
             name: 'Standard Push-Ups',
             category: 'Chest & Arms',
             difficulty: 'Beginner',
-            video: uploadedUrls['pushups_demo.mp4'],
-            description: 'Classic push-up targeting chest, shoulders, and triceps.',
+            video: uploadedUrls['pushups_demo.mp4'] || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+            description: `## طريقة الأداء الصحيحة
+1. استلقِ على الأرض مع وضع اليدين بعرض الكتفين
+2. ادفع جسمك للأعلى حتى تستقيم الذراعان
+3. انزل ببطء حتى يلامس صدرك الأرض تقريباً
+
+## نصيحة التنفس
+شهيق عند النزول — زفير عند الدفع للأعلى
+
+## الأخطاء الشائعة
+- ترك الوسط يتدلى للأسفل
+- فتح المرفقين بزاوية 90 درجة
+- عدم إكمال المدى الحركي الكامل`,
             place: 'Home',
             isFree: true,
         },
@@ -90,8 +101,19 @@ async function seed() {
             name: 'Bodyweight Squats',
             category: 'Legs & Glutes',
             difficulty: 'Beginner',
-            video: uploadedUrls['squats_demo.mp4'],
-            description: 'Fundamental lower body strength builder.',
+            video: uploadedUrls['squats_demo.mp4'] || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+            description: `## طريقة الأداء الصحيحة
+1. قف مع إبعاد القدمين بعرض الكتفين
+2. انزل بحوضك للخلف وللأسفل كأنك تجلس على كرسي
+3. حافظ على استقامة الظهر واضغط بكعبيك للعودة للأعلى
+
+## نصيحة التنفس
+شهيق أثناء الهبوط — زفير أثناء الصعود
+
+## الأخطاء الشائعة
+- انحناء الركبتين للداخل
+- رفع الكعبين عن الأرض
+- انحناء الظهر للأمام`,
             place: 'Home',
             isFree: true,
         },
@@ -99,8 +121,19 @@ async function seed() {
             name: 'Dumbbell Bench Press',
             category: 'Chest & Core',
             difficulty: 'Intermediate',
-            video: uploadedUrls['dumbbell_press_demo.mp4'],
-            description: 'Hypertrophy exercise for upper body muscle gain.',
+            video: uploadedUrls['dumbbell_press_demo.mp4'] || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+            description: `## طريقة الأداء الصحيحة
+1. امسك الأثقال على مستوى الأذنين بوضعية مريحة
+2. ارفع الأثقال مستقيماً فوق الصدر
+3. انزل ببطء مع التحكم بالحركة
+
+## نصيحة التنفس
+زفير عند الرفع ← شهيق عند الإنزال
+
+## الأخطاء الشائعة
+- ثني الظهر بشكل مفرط
+- رفع الأثقال بسرعة مفرطة
+- عدم ثبات الجذع`,
             place: 'Gym',
             isFree: true,
         },
@@ -108,8 +141,19 @@ async function seed() {
             name: 'Plank Hold',
             category: 'Core & Stability',
             difficulty: 'Beginner',
-            video: uploadedUrls['plank_demo.mp4'],
-            description: 'Isometric core strengthening exercise.',
+            video: uploadedUrls['plank_demo.mp4'] || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoylikes.mp4',
+            description: `## طريقة الأداء الصحيحة
+1. ارتكز على الساعدين وأطراف الأصابع
+2. حافظ على استقامة الجسم من الرأس إلى الكعبين
+3. شد عضلات البطن والأرداف طوال فترة التمرين
+
+## نصيحة التنفس
+تنفس بشكل منتظم وهادئ دون حبس النفس
+
+## الأخطاء الشائعة
+- هبوط الحوض للأسفل
+- رفع الأرداف للأعلى زيادة عن اللزوم
+- الانحناء في منطقة الرقبة`,
             place: 'Home',
             isFree: true,
         },
@@ -117,8 +161,19 @@ async function seed() {
             name: 'Jumping Jacks Cardio',
             category: 'Full Body & Cardio',
             difficulty: 'Beginner',
-            video: uploadedUrls['jumping_jacks_demo.mp4'],
-            description: 'High intensity aerobic warm up and calorie burner.',
+            video: uploadedUrls['jumping_jacks_demo.mp4'] || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+            description: `## طريقة الأداء الصحيحة
+1. قف مستقيماً مع ضم القدمين واليدين بجانب الجسم
+2. ادمج القفز مباعداً بين القدمين مع رفع اليدين فوق الرأس
+3. عد فوراً لوضعية البداية بشكل متناسق وسريع
+
+## نصيحة التنفس
+تنفس بإيقاع متناسق مع الحركة
+
+## الأخطاء الشائعة
+- الهبوط الثقيل على الكعبين
+- عدم رفع اليدين بالكامل
+- سرعة غير متناسقة تؤدي للإجهاد السريع`,
             place: 'Home',
             isFree: true,
         },

@@ -36,7 +36,7 @@ export const challengePostSchema = new Schema<ChallengePostEntity>({
 export const challengePostCommentSchema = new Schema<ChallengePostCommentEntity>({
     postId: {
         type: Schema.Types.ObjectId,
-        ref: 'ChallengePost',
+        ref: 'Post',
         required: true,
         index: true,
     },
@@ -54,7 +54,7 @@ export const challengePostCommentSchema = new Schema<ChallengePostCommentEntity>
 export const challengePostReactionSchema = new Schema<ChallengePostReactionEntity>({
     postId: {
         type: Schema.Types.ObjectId,
-        ref: 'ChallengePost',
+        ref: 'Post',
         required: true,
     },
     userId: {
@@ -72,6 +72,6 @@ export const challengePostReactionSchema = new Schema<ChallengePostReactionEntit
 
 challengePostReactionSchema.index({ postId: 1, userId: 1 }, { unique: true });
 
-export const ChallengePost = model<ChallengePostEntity>('ChallengePost', challengePostSchema);
-export const ChallengePostComment = model<ChallengePostCommentEntity>('ChallengePostComment', challengePostCommentSchema);
-export const ChallengePostReaction = model<ChallengePostReactionEntity>('ChallengePostReaction', challengePostReactionSchema);
+export const Post = model<ChallengePostEntity>('Post', challengePostSchema, 'posts');
+export const Comment = model<ChallengePostCommentEntity>('Comment', challengePostCommentSchema, 'comments');
+export const Reaction = model<ChallengePostReactionEntity>('Reaction', challengePostReactionSchema, 'reactions');

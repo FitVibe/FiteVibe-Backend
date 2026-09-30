@@ -1,16 +1,16 @@
 import { Types } from "mongoose";
-import { ChallengePost, ChallengePostComment, ChallengePostReaction } from "../models/challengeCommunityModel";
+import { Post, Comment, Reaction } from "../models/challengeCommunityModel";
 import { ChallengePostEntity, ChallengePostCommentEntity } from "@/domain/entities/ChallengeCommunityEntity";
 import { IChallengeCommunityRepository } from "@/domain/repositories/IChallengeCommunityRepository";
 
 export class MongoChallengeCommunityRepository implements IChallengeCommunityRepository {
     async createPost(post: Partial<ChallengePostEntity>): Promise<ChallengePostEntity> {
-        const newPost = new ChallengePost(post);
+        const newPost = new Post(post);
         return await newPost.save();
     }
 
     async getChallengePosts(challengeId: string | Types.ObjectId, skip: number = 0, limit: number = 20): Promise<ChallengePostEntity[]> {
-        return await ChallengePost.find({ challengeId: new Types.ObjectId(challengeId) })
+        return await Post.find({ challengeId: new Types.ObjectId(challengeId) })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -18,18 +18,18 @@ export class MongoChallengeCommunityRepository implements IChallengeCommunityRep
     }
 
     async getPostById(postId: string | Types.ObjectId): Promise<ChallengePostEntity | null> {
-        return await ChallengePost.findById(postId).populate('userId', 'username first_name last_name profile_image');
+        return await Post.findById(postId).populate('userId', 'username first_name last_name profile_image');
     }
 
     async addComment(comment: Partial<ChallengePostCommentEntity>): Promise<ChallengePostCommentEntity> {
-        const newComment = new ChallengePostComment(comment);
+        const newComment = new Comment(comment);
         const saved = await newComment.save();
         await this.incrementCommentsCount(comment.postId!, 1);
         return saved;
     }
 
     async getPostComments(postId: string | Types.ObjectId): Promise<ChallengePostCommentEntity[]> {
-        return await ChallengePostComment.find({ postId: new Types.ObjectId(postId) })
+        return await Comment.find({ postId: new Types.ObjectId(postId) })
             .sort({ createdAt: 1 })
             .populate('userId', 'username first_name last_name profile_image');
     }
@@ -42,12 +42,12 @@ export class MongoChallengeCommunityRepository implements IChallengeCommunityRep
         const pId = new Types.ObjectId(postId);
         const uId = new Types.ObjectId(userId);
 
-        const existing = await ChallengePostReaction.findOne({ postId: pId, userId: uId });
+        const existing = await Reaction.findOne({ postId: pId, userId: uId });
 
         if (existing) {
             if (existing.reactionType === reactionType) {
                 // Remove reaction if clicking same reaction type
-                await ChallengePostReaction.deleteOne({ _id: existing._id });
+                await Reaction.deleteOne({ _id: existing._id });
                 await this.incrementReactionsCount(postId, -1);
                 return { reacted: false };
             } else {
@@ -58,7 +58,7 @@ export class MongoChallengeCommunityRepository implements IChallengeCommunityRep
             }
         } else {
             // New reaction
-            const newReaction = new ChallengePostReaction({
+            const newReaction = new Reaction({
                 postId: pId,
                 userId: uId,
                 reactionType,
@@ -70,7 +70,7 @@ export class MongoChallengeCommunityRepository implements IChallengeCommunityRep
     }
 
     async getUserReaction(postId: string | Types.ObjectId, userId: string | Types.ObjectId): Promise<string | null> {
-        const reaction = await ChallengePostReaction.findOne({
+        const reaction = await Reaction.findOne({
             postId: new Types.ObjectId(postId),
             userId: new Types.ObjectId(userId),
         });
@@ -78,10 +78,10 @@ export class MongoChallengeCommunityRepository implements IChallengeCommunityRep
     }
 
     async incrementReactionsCount(postId: string | Types.ObjectId, delta: number): Promise<void> {
-        await ChallengePost.findByIdAndUpdate(postId, { $inc: { reactionsCount: delta } });
+        await Post.findByIdAndUpdate(postId, { $inc: { reactionsCount: delta } });
     }
 
     async incrementCommentsCount(postId: string | Types.ObjectId, delta: number): Promise<void> {
-        await ChallengePost.findByIdAndUpdate(postId, { $inc: { commentsCount: delta } });
+        await Post.findByIdAndUpdate(postId, { $inc: { commentsCount: delta } });
     }
 }
