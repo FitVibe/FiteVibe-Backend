@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import 'dotenv/config';
@@ -26,12 +28,6 @@ async function seed() {
     console.log('Initializing MinIO bucket...');
     await initMinioBucket();
 
-    // Dummy video content for seeding (minimal valid video byte buffer)
-    const dummyVideoBuffer = Buffer.from(
-        '00000018667479706d703432000000006d70343269736f6d',
-        'hex'
-    );
-
     console.log('Uploading sample media to MinIO...');
     const dummyImageBuffer = Buffer.from(
         '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010d0a2db40000000049454e44ae426082',
@@ -51,15 +47,25 @@ async function seed() {
     ];
 
     const uploadedUrls: Record<string, string> = {};
+    const mediaDir = path.join(__dirname, 'assets_media');
+
     for (const file of videoFiles) {
         try {
-            const buffer = file.isVideo ? dummyVideoBuffer : dummyImageBuffer;
+            let buffer: Buffer;
+            const filePath = path.join(mediaDir, file.name);
+
+            if (file.isVideo && fs.existsSync(filePath)) {
+                buffer = fs.readFileSync(filePath);
+            } else {
+                buffer = dummyImageBuffer;
+            }
+
             const contentType = file.isVideo ? 'video/mp4' : 'image/png';
             const url = await uploadFile(file.name, buffer, contentType);
             uploadedUrls[file.name] = url;
-            console.log(`Uploaded ${file.name} -> ${url}`);
+            console.log(`Uploaded ${file.name} (${buffer.length} bytes) -> ${url}`);
         } catch (err) {
-            console.warn(`Could not upload ${file.name} to MinIO (is MinIO running?). Using local fallback URL.`);
+            console.warn(`Could not upload ${file.name} to MinIO. Using local fallback URL.`);
             uploadedUrls[file.name] = getObjectUrl(file.name);
         }
     }
