@@ -50,4 +50,12 @@ export class MongoDailyTrainingPlannerRepository implements IDailyTrainingPlanne
             .sort({ date: -1 })
             .populate('exercises.workoutId');
     }
+
+    async findPlanners(filter: Record<string, any> = {}, skip: number = 0, limit: number = 20): Promise<DailyTrainingPlannerEntity[]> {
+        return await DailyTrainingPlanner.find(filter)
+            .sort({ date: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('exercises.workoutId');
+    }
 }

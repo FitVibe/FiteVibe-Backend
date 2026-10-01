@@ -5,4 +5,5 @@ export interface IDailyTrainingPlannerRepository extends IBaseRepository<DailyTr
     findTodayPlannerForUser(userId: string, start: Date, end: Date): Promise<DailyTrainingPlannerEntity | null>;
     findTodayFreePlanner(start: Date, end: Date): Promise<DailyTrainingPlannerEntity | null>;
     findLatestFreePlanner(): Promise<DailyTrainingPlannerEntity | null>;
+    findPlanners(filter?: Record<string, any>, skip?: number, limit?: number): Promise<DailyTrainingPlannerEntity[]>;
 }

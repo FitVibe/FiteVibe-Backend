@@ -370,4 +370,39 @@ export default class HomeService {
             }))
         };
     }
+
+    public async getPlannersList(userId: string, skip: number = 0, limit: number = 20) {
+        const filter: Record<string, any> = {
+            $or: [
+                { userId: new Types.ObjectId(userId) },
+                { userId: { $exists: false } },
+                { userId: null }
+            ]
+        };
+
+        const planners = await this.dailyTrainingPlannerRepo.findPlanners(filter, skip, limit);
+
+        return planners.map((planner: any) => ({
+            plannerId: planner._id,
+            name: planner.name,
+            isFree: planner.isFree,
+            exercisesCount: planner.exercises ? planner.exercises.length : 0,
+            totalTime: planner.duration,
+            isCompleted: planner.isCompleted || false,
+            date: planner.date,
+            exercises: planner.exercises.map((item: any) => ({
+                workoutId: item.workoutId?._id || item.workoutId,
+                name: item.workoutId?.name || 'Workout Exercise',
+                category: item.workoutId?.category || '',
+                difficulty: item.workoutId?.difficulty || '',
+                video: item.workoutId?.video || '',
+                description: item.workoutId?.description || '',
+                place: item.workoutId?.place || '',
+                duration: item.duration,
+                repeatition: item.repeatition,
+                sets: item.sets,
+                kilos: item.kilos
+            }))
+        }));
+    }
 }

@@ -81,4 +81,23 @@ export default class HomeController {
             res.status(500).json({ message: error.message || 'Internal server error' });
         }
     };
+
+    public getPlannersList = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const user = req.user as any;
+            const skip = parseInt(req.query.skip as string) || 0;
+            const limit = parseInt(req.query.limit as string) || 20;
+
+            const planners = await this.homeService.getPlannersList(
+                user._id.toString(),
+                skip,
+                limit
+            );
+
+            res.status(200).json({ status: 'success', data: planners });
+        } catch (error: any) {
+            console.error('Error fetching planners list:', error);
+            res.status(500).json({ message: error.message || 'Internal server error' });
+        }
+    };
 }
