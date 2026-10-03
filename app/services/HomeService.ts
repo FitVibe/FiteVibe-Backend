@@ -8,6 +8,7 @@ import { getCache, setCache, clearUserDailyMeasures } from "@/infrastructure/mem
 import { IDailyTrainingPlannerRepository } from "@/domain/repositories/IDailyTrainingPlannerRepository";
 import { IDailyMealsRepository } from "@/domain/repositories/IDailyMealsRepository";
 import { IUserRepository } from "@/domain/repositories/IUserRepository";
+import { IMealRepository } from "@/domain/repositories/IMealRepository";
 
 import ChallengeService from "./ChallengeService";
 
@@ -19,6 +20,7 @@ export default class HomeService {
     private userRepo: IUserRepository;
     private waterService: WaterService;
     private challengeService?: ChallengeService;
+    private mealRepo?: IMealRepository;
 
     constructor(
         db: MongoDBDatabase,
@@ -27,7 +29,8 @@ export default class HomeService {
         dailyMealsRepo: IDailyMealsRepository,
         userRepo: IUserRepository,
         waterService: WaterService,
-        challengeService?: ChallengeService
+        challengeService?: ChallengeService,
+        mealRepo?: IMealRepository
     ) {
         this.db = db;
         this.dailyLoginModel = dailyLoginModel;
@@ -36,6 +39,7 @@ export default class HomeService {
         this.userRepo = userRepo;
         this.waterService = waterService;
         this.challengeService = challengeService;
+        this.mealRepo = mealRepo;
     }
 
     public async getHomeData(userId: string) {
@@ -404,5 +408,113 @@ export default class HomeService {
                 kilos: item.kilos
             }))
         }));
+    }
+
+    public async getMealDetails(mealId: string) {
+        if (!this.mealRepo) {
+            throw new Error('Meal repository not configured');
+        }
+
+        const meal = await this.mealRepo.findById(mealId);
+        if (!meal) {
+            throw new Error('Meal not found');
+        }
+
+        const calories = meal.calories || ((meal.carbs || 0) * 4 + (meal.protein || 0) * 4 + (meal.fats || 0) * 9);
+
+        // Fetch other available meals (excluding current meal)
+        const filter = Types.ObjectId.isValid(mealId)
+            ? { _id: { $ne: new Types.ObjectId(mealId) } }
+            : {};
+        const otherMealsDocs = await this.mealRepo.findAll(filter);
+
+        const otherMeals = otherMealsDocs.map((m: any) => ({
+            mealId: m._id,
+            name: m.name,
+            calories: m.calories || ((m.carbs || 0) * 4 + (m.protein || 0) * 4 + (m.fats || 0) * 9),
+            carbs: m.carbs || 0,
+            protein: m.protein || 0,
+            fats: m.fats || 0,
+            ingredients: m.ingredients || [],
+            image: m.image || '',
+            isFree: m.isFree !== undefined ? m.isFree : true
+        }));
+
+        return {
+            mealId: meal._id,
+            name: meal.name,
+            calories,
+            carbs: meal.carbs || 0,
+            protein: meal.protein || 0,
+            fats: meal.fats || 0,
+            ingredients: meal.ingredients || [],
+            image: meal.image || '',
+            isFree: meal.isFree !== undefined ? meal.isFree : true,
+            otherMeals
+        };
+    }
+
+    public async getDailyMeals(userId: string) {
+        const now = new Date();
+        const todayMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const tomorrowMidnight = new Date(todayMidnight.getTime() + 24 * 60 * 60 * 1000);
+
+        let mealsPlan = await this.dailyMealsRepo.findTodayMealsPlanForUser(userId, todayMidnight, tomorrowMidnight);
+
+        if (!mealsPlan) {
+            mealsPlan = await this.dailyMealsRepo.findTodayFreeMealsPlan(todayMidnight, tomorrowMidnight);
+        }
+
+        if (!mealsPlan) {
+            mealsPlan = await this.dailyMealsRepo.findLatestFreeMealsPlan();
+        }
+
+        if (!mealsPlan) {
+            return null;
+        }
+
+        let totalCalories = 0;
+        let totalCarbs = 0;
+        let totalProtein = 0;
+        let totalFats = 0;
+
+        const mealsFormatted = mealsPlan.meals.map((item: any) => {
+            const mealObj = item.mealId || {};
+            const calories = mealObj.calories || ((mealObj.carbs || 0) * 4 + (mealObj.protein || 0) * 4 + (mealObj.fats || 0) * 9);
+
+            totalCalories += calories;
+            totalCarbs += mealObj.carbs || 0;
+            totalProtein += mealObj.protein || 0;
+            totalFats += mealObj.fats || 0;
+
+            return {
+                meal_type: item.meal_type,
+                status: item.status || 'pending',
+                logged_at: item.logged_at || null,
+                meal: {
+                    _id: mealObj._id || item.mealId,
+                    name: mealObj.name || 'Delicious Meal',
+                    calories: calories,
+                    carbs: mealObj.carbs || 0,
+                    protein: mealObj.protein || 0,
+                    fats: mealObj.fats || 0,
+                    ingredients: mealObj.ingredients || [],
+                    image: mealObj.image || '',
+                    isFree: mealObj.isFree !== undefined ? mealObj.isFree : true
+                }
+            };
+        });
+
+        return {
+            planId: mealsPlan._id,
+            date: mealsPlan.date,
+            is_complete: mealsPlan.is_complete || false,
+            isFree: mealsPlan.isFree,
+            totalCalories,
+            totalCarbs,
+            totalProtein,
+            totalFats,
+            meals: mealsFormatted
+        };
     }
 }

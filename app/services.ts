@@ -13,6 +13,7 @@ import DailyTasks from "@/infrastructure/database/models/dailyTasksModel";
 import { MongoUserRepository } from "@/infrastructure/database/repositories/MongoUserRepository";
 import { MongoDailyTrainingPlannerRepository } from "@/infrastructure/database/repositories/MongoDailyTrainingPlannerRepository";
 import { MongoDailyMealsRepository } from "@/infrastructure/database/repositories/MongoDailyMealsRepository";
+import { MongoMealRepository } from "@/infrastructure/database/repositories/MongoMealRepository";
 import { MongoChallengeRepository } from "@/infrastructure/database/repositories/MongoChallengeRepository";
 import { MongoUserChallengeRepository } from "@/infrastructure/database/repositories/MongoUserChallengeRepository";
 import { MongoChallengeCommunityRepository } from "@/infrastructure/database/repositories/MongoChallengeCommunityRepository";
@@ -22,6 +23,7 @@ import NotificationService from "./services/NotificationService";
 const mongoDBInstance = new MongoDBDatabase();
 
 export const userRepository = new MongoUserRepository();
+export const mealRepository = new MongoMealRepository();
 export const dailyTrainingPlannerRepository = new MongoDailyTrainingPlannerRepository();
 export const dailyMealsRepository = new MongoDailyMealsRepository();
 export const challengeRepository = new MongoChallengeRepository();
@@ -55,5 +57,6 @@ export const homeService = new HomeService(
     dailyMealsRepository,
     userRepository,
     waterService,
-    challengeService
+    challengeService,
+    mealRepository
 );

@@ -179,6 +179,8 @@ Exercise descriptions in `Workout.description` support structured Markdown headi
 - `GET /api/home`: Retrieves complete home payload: `dailyLogin` streak, `water` intake, `trainingDay` planner (populated exercises), `dailyMeals` plan, `dailyMeasures` metrics (weight, net calories, macro targets), and **`challenges`** list (with `isLocked` and `isEnrolled` flags).
 - `GET /api/home/planners`: Fetches paginated list of daily training planners (`skip` and `limit` query parameters supported; returns planners sorted by date).
 - `GET /api/home/planner/:plannerId`: Fetches full details for a specific daily training planner by `plannerId` (including populated exercise names, categories, video URLs, and Markdown descriptions).
+- `GET /api/home/meal/:mealId`: Fetches full details for a specific meal by `mealId` (including calories, protein, carbs, fats, ingredients list, image, and `otherMeals` list for the bottom section in UI).
+- `GET /api/home/meals/daily`: Fetches user's daily meals schedule (Breakfast, Lunch, Dinner, Snacks) with statuses, logged time, and macro totals.
 - `POST /api/home/workout/complete`: Marks a daily training planner as completed (`isCompleted: true`). Clones shared/free template planners (`userId: null`) into user-specific records for the current user, and invalidates `daily_measures` cache.
 - `POST /api/home/meals/log`: Updates meal log status (`completed`, `pending`, `upcoming`) and invalidates `daily_measures` cache.
 - `POST /api/home/water/add`: Logs water intake cups.

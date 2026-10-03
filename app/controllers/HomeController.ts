@@ -100,4 +100,32 @@ export default class HomeController {
             res.status(500).json({ message: error.message || 'Internal server error' });
         }
     };
+
+    public getMealDetails = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { mealId } = req.params;
+
+            if (!mealId) {
+                res.status(400).json({ message: 'mealId is required' });
+                return;
+            }
+
+            const mealDetails = await this.homeService.getMealDetails(mealId);
+            res.status(200).json({ status: 'success', data: mealDetails });
+        } catch (error: any) {
+            console.error('Error fetching meal details:', error);
+            res.status(500).json({ message: error.message || 'Internal server error' });
+        }
+    };
+
+    public getDailyMeals = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const user = req.user as any;
+            const dailyMeals = await this.homeService.getDailyMeals(user._id.toString());
+            res.status(200).json({ status: 'success', data: dailyMeals });
+        } catch (error: any) {
+            console.error('Error fetching daily meals:', error);
+            res.status(500).json({ message: error.message || 'Internal server error' });
+        }
+    };
 }
