@@ -5,6 +5,7 @@ import UserValidator from "@/infrastructure/validators/UserValidator";
 import CredentialsValidator from "@/infrastructure/validators/CredentialsValidator";
 import { UserEntity } from "@/domain/entities/UserEntity";
 import { ValidatorResult } from '@/domain/validator/ValidatorResult';
+import { CredentialsInterface } from "@/domain/types/CredentialsInterface";
 import passport from "passport";
 
 export default class AuthController {
@@ -100,5 +101,33 @@ export default class AuthController {
         const user = req.user as any;
         await this.userService.updateFcmToken(user._id.toString(), fcm_token);
         res.status(200).json({ status: "success", message: "FCM token updated" });
+    }
+
+    changePassword = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { current_password, new_password } = req.body;
+            if (!current_password || !new_password) {
+                res.status(400).json({ status: "error", message: "Both current_password and new_password are required" });
+                return;
+            }
+
+            if (new_password.length < 6) {
+                res.status(400).json({ status: "error", message: "new_password must be at least 6 characters" });
+                return;
+            }
+
+            const user = req.user as any;
+            const result = await this.userService.changePassword(user._id.toString(), current_password, new_password);
+
+            if (!result.success) {
+                res.status(400).json({ status: "error", message: result.message });
+                return;
+            }
+
+            res.status(200).json({ status: "success", message: result.message });
+        } catch (error) {
+            console.error('[AuthController] changePassword error:', error);
+            res.status(500).json({ status: "error", message: "Internal server error" });
+        }
     }
 }

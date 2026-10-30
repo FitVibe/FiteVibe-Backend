@@ -7,6 +7,8 @@ const router = Router()
 router.post("/sign_up", authController.signup)
 router.post("/sign_in", authController.signin)
 router.post("/sign_out", authController.logout)
+router.post("/logout", authController.logout)
+router.post("/reset-password", isAuthenticated, authController.changePassword)
 router.get("/current_user", isAuthenticated, authController.currentUser)
 router.patch("/fcm-token", isAuthenticated, authController.updateFcmToken)
 

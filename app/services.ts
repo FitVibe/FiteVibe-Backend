@@ -19,6 +19,7 @@ import { MongoUserChallengeRepository } from "@/infrastructure/database/reposito
 import { MongoChallengeCommunityRepository } from "@/infrastructure/database/repositories/MongoChallengeCommunityRepository";
 import { MongoNotificationRepository } from "@/infrastructure/database/repositories/MongoNotificationRepository";
 import NotificationService from "./services/NotificationService";
+import SettingsService from "./services/SettingsService";
 
 const mongoDBInstance = new MongoDBDatabase();
 
@@ -31,7 +32,8 @@ export const userChallengeRepository = new MongoUserChallengeRepository();
 export const challengeCommunityRepository = new MongoChallengeCommunityRepository();
 export const notificationRepository = new MongoNotificationRepository();
 
-export const userService = new UserService(mongoDBInstance, User, Client);
+export const userService = new UserService(mongoDBInstance, User, Client, UserSettings);
+export const settingsService = new SettingsService(UserSettings, User);
 export const waterService = new WaterService(mongoDBInstance, UserSettings, DrinkWaterTask, DailyTasks);
 
 export const notificationService = new NotificationService(

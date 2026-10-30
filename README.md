@@ -171,9 +171,10 @@ Exercise descriptions in `Workout.description` support structured Markdown headi
 ### Auth
 - `POST /api/auth/signup`: Client account registration.
 - `POST /api/auth/signin`: Local authentication sign in.
+- `POST /api/auth/logout` (or `/sign_out`): End session.
+- `POST /api/auth/reset-password`: Change password verifying `current_password` and updating to `new_password`.
 - `GET /api/auth/current_user`: Fetch current authenticated user.
-- `POST /api/auth/logout`: End session.
-- `POST /api/auth/fcm_token`: Register FCM device token for push notifications.
+- `PATCH /api/auth/fcm-token`: Register FCM device token for push notifications.
 
 ### Home & Daily Measures
 - `GET /api/home`: Retrieves complete home payload: `dailyLogin` streak, `water` intake, `trainingDay` planner (populated exercises), `dailyMeals` plan, `dailyMeasures` metrics (weight, net calories, macro targets), and **`challenges`** list (with `isLocked` and `isEnrolled` flags).
@@ -201,9 +202,17 @@ Exercise descriptions in `Workout.description` support structured Markdown headi
 - `PATCH /api/notifications/:id/read`: Mark a specific notification as read.
 - `PATCH /api/notifications/read-all`: Mark all notifications for current user as read.
 
+### Profile
+- `GET /api/profile`: Fetch current user profile including body measurements and fitness goals.
+- `PATCH /api/profile`: Update personal info (`first_name`, `last_name`, `city`, `age`, etc.) and body goals (`weight`, `height`, `fats`, `personal_goals`).
+- `DELETE /api/profile`: Cascade delete user account, user settings, and session.
+
 ### Settings
+- `GET /api/settings`: Fetch all settings (water hydration, push notification toggles, preferences, and account tier) in a single aggregated payload.
 - `GET /api/settings/water`: Fetch user water reminder settings.
-- `POST /api/settings/water`: Update water intake daily target and reminder interval.
+- `PUT /api/settings/water`: Update water intake target (`daily_need`), cup size, and reminder interval.
+- `PUT /api/settings/notifications`: Update push notification toggles (`workout_reminders`, `meal_reminders`, `community_updates`).
+- `PUT /api/settings/preferences`: Update app preferences (`language: 'en' | 'ar'`).
 
 ---
 

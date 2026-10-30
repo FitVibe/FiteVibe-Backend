@@ -27,7 +27,34 @@ const waterSettingsSchema = new Schema({
         required: false,
         default: null,
     },
-}, { _id: false }); // embedded sub-doc, no separate _id needed
+}, { _id: false });
+
+const notificationSettingsSchema = new Schema({
+    workout_reminders: {
+        type: Boolean,
+        required: true,
+        default: true,
+    },
+    meal_reminders: {
+        type: Boolean,
+        required: true,
+        default: true,
+    },
+    community_updates: {
+        type: Boolean,
+        required: true,
+        default: true,
+    },
+}, { _id: false });
+
+const preferenceSettingsSchema = new Schema({
+    language: {
+        type: String,
+        enum: ['en', 'ar'],
+        required: true,
+        default: 'en',
+    },
+}, { _id: false });
 
 const userSettingsSchema = new Schema<UserSettingsEntity>({
     userId: {
@@ -38,6 +65,16 @@ const userSettingsSchema = new Schema<UserSettingsEntity>({
     },
     water: {
         type: waterSettingsSchema,
+        required: true,
+        default: () => ({}),
+    },
+    notifications: {
+        type: notificationSettingsSchema,
+        required: true,
+        default: () => ({}),
+    },
+    preferences: {
+        type: preferenceSettingsSchema,
         required: true,
         default: () => ({}),
     },

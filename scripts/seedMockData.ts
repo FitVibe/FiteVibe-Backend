@@ -408,6 +408,14 @@ async function seed() {
                 cup_size_ml: 250,
                 reminder_interval_minutes: 60,
             },
+            notifications: {
+                workout_reminders: true,
+                meal_reminders: true,
+                community_updates: true,
+            },
+            preferences: {
+                language: 'en',
+            },
         });
         console.log(`Created UserSettings for test user.`);
     }
