@@ -13,8 +13,10 @@ RUN npm install && apk del python3 make g++
 COPY app ./app
 COPY domain ./domain
 COPY infrastructure ./infrastructure
-COPY public ./public
 COPY nodemon.json ./
+
+# Ensure public directory structure exists
+RUN mkdir -p public/files public/images
 
 # Compile TypeScript
 RUN npm run build
