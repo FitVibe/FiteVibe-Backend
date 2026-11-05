@@ -45,7 +45,8 @@
     "@types/mime-types": "^2.1.4",
     "@types/mongoose": "^5.11.97",
     "@types/node": "^22.5.4",
-    "tsconfig-paths": "^4.2.0"
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.5.4"
   },
   "_moduleAliases": {
     "@": "dist/"
