@@ -214,6 +214,13 @@ Exercise descriptions in `Workout.description` support structured Markdown headi
 - `PUT /api/settings/notifications`: Update push notification toggles (`workout_reminders`, `meal_reminders`, `community_updates`).
 - `PUT /api/settings/preferences`: Update app preferences (`language: 'en' | 'ar'`).
 
+### Subscriptions (Stripe In-App PaymentSheet)
+- `GET /api/subscriptions/plans`: List the 3 tiered plans (**Standard Free**, **Professional $45/mo**, **Ultimate $60/mo**) with their feature checklists and the user's active tier.
+- `GET /api/subscriptions/current`: Fetch current active subscription details, renewal date, and cancel status.
+- `POST /api/subscriptions/payment-sheet`: Generate in-app native Stripe PaymentSheet parameters (`paymentIntentClientSecret`, `customerEphemeralKeySecret`, `customerId`, `publishableKey`) for seamless mobile checkout without browser redirects.
+- `POST /api/subscriptions/cancel`: Cancel active subscription and revert user back to Standard Free tier.
+- `POST /api/subscriptions/webhook`: Process raw Stripe lifecycle webhooks (`invoice.payment_succeeded`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`).
+
 ---
 
 ## 📁 Project Structure

@@ -18,8 +18,11 @@ import { MongoChallengeRepository } from "@/infrastructure/database/repositories
 import { MongoUserChallengeRepository } from "@/infrastructure/database/repositories/MongoUserChallengeRepository";
 import { MongoChallengeCommunityRepository } from "@/infrastructure/database/repositories/MongoChallengeCommunityRepository";
 import { MongoNotificationRepository } from "@/infrastructure/database/repositories/MongoNotificationRepository";
+import { MongoSubscriptionRepository } from "@/infrastructure/database/repositories/MongoSubscriptionRepository";
 import NotificationService from "./services/NotificationService";
 import SettingsService from "./services/SettingsService";
+import SubscriptionService from "./services/SubscriptionService";
+import { PaymentGatewayFactory } from "@/infrastructure/gateways/PaymentGatewayFactory";
 
 const mongoDBInstance = new MongoDBDatabase();
 
@@ -31,10 +34,14 @@ export const challengeRepository = new MongoChallengeRepository();
 export const userChallengeRepository = new MongoUserChallengeRepository();
 export const challengeCommunityRepository = new MongoChallengeCommunityRepository();
 export const notificationRepository = new MongoNotificationRepository();
+export const subscriptionRepository = new MongoSubscriptionRepository();
+
+export const paymentGateway = PaymentGatewayFactory.getGateway();
 
 export const userService = new UserService(mongoDBInstance, User, Client, UserSettings);
 export const settingsService = new SettingsService(UserSettings, User);
 export const waterService = new WaterService(mongoDBInstance, UserSettings, DrinkWaterTask, DailyTasks);
+export const subscriptionService = new SubscriptionService(subscriptionRepository, userRepository, paymentGateway);
 
 export const notificationService = new NotificationService(
     notificationRepository,

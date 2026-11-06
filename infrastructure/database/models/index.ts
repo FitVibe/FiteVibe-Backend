@@ -11,6 +11,7 @@ import DrinkWaterTask from './drinkWaterTaskModel';
 import Challenge from './challengeModel';
 import UserChallenge from './userChallengeModel';
 import { Post, Comment, Reaction } from './challengeCommunityModel';
+import Subscription from './subscriptionModel';
 
 export {
     User,
@@ -28,4 +29,5 @@ export {
     Post,
     Comment,
     Reaction,
+    Subscription,
 };

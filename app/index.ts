@@ -11,8 +11,17 @@ import { initMinioBucket } from "@/infrastructure/minio/minioClient";
 import { startKafkaPipelines } from "@/infrastructure/kafka";
 import { startCronJobs } from "@/infrastructure/cron";
 
+import { subscriptionController } from "./controllers";
+
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Stripe Webhook MUST receive the raw unparsed Buffer for signature verification
+app.post(
+    '/api/subscriptions/webhook',
+    express.raw({ type: 'application/json' }),
+    subscriptionController.handleWebhook
+);
 
 app.use(fileUpload());
 app.use(express.json());

@@ -1,6 +1,6 @@
-import { Document, Types } from "mongoose";
+import { SubscriptionTier } from "./SubscriptionEntity";
 
-interface UserEntity extends Document {
+export interface UserEntity extends Document {
     _id?: Types.ObjectId;
     email: string;
     account_type: AccountType;
@@ -15,7 +15,10 @@ interface UserEntity extends Document {
     age: number;
     gender: 'Male' | 'Female';
     email_verified: boolean;
-    client?: ClientEntity
+    client?: ClientEntity;
+    subscriptionTier?: SubscriptionTier;
+    subscriptionStatus?: string;
+    assignedCoachId?: Types.ObjectId;
 }
 
-type AccountType = 'client' | 'coach' | 'admin'
+export type AccountType = 'client' | 'coach' | 'admin';

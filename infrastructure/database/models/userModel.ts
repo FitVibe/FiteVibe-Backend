@@ -71,7 +71,23 @@ const userSchema = new Schema<UserEntity>({
     client: {
         type: clientSchema,
         required: false,
-    }
+    },
+    subscriptionTier: {
+        type: String,
+        enum: ['standard', 'professional', 'ultimate'],
+        default: 'standard',
+        required: true,
+    },
+    subscriptionStatus: {
+        type: String,
+        default: 'active',
+        required: false,
+    },
+    assignedCoachId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: false,
+    },
 });
 
 const User = model<UserEntity>('User', userSchema);

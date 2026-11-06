@@ -5,7 +5,8 @@ import ChallengeController from "./controllers/ChallengeController";
 import NotificationController from "./controllers/NotificationController";
 import SettingsController from "./controllers/SettingsController";
 import ProfileController from "./controllers/ProfileController";
-import { userService, homeService, waterService, challengeService, challengeCommunityService, notificationService, settingsService } from "./services";
+import SubscriptionController from "./controllers/SubscriptionController";
+import { userService, homeService, waterService, challengeService, challengeCommunityService, notificationService, settingsService, subscriptionService } from "./services";
 import { userValidator } from "./validators";
 import { credentialsValidator } from "./validators";
 
@@ -16,3 +17,4 @@ export const challengeController = new ChallengeController(challengeService, cha
 export const notificationController = new NotificationController(notificationService);
 export const settingsController = new SettingsController(settingsService);
 export const profileController = new ProfileController(userService);
+export const subscriptionController = new SubscriptionController(subscriptionService);

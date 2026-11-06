@@ -5,6 +5,7 @@ import homeRouter from "./homeRouter";
 import settingsRouter from "./settingsRouter";
 import challengeRouter from "./challengeRouter";
 import notificationRouter from "./notificationRouter";
+import subscriptionRouter from "./subscriptionRouter";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use("/home", homeRouter);
 router.use("/settings", settingsRouter);
 router.use("/challenges", challengeRouter);
 router.use("/notifications", notificationRouter);
+router.use("/subscriptions", subscriptionRouter);
 
 export default router;

@@ -24,7 +24,7 @@ export default class ChallengeService {
      */
     public async getPublishedChallenges(userId: string, skip: number = 0, limit: number = 20) {
         const user = await this.userRepo.findById(userId);
-        const isPremiumUser = (user as any)?.account_type === 'premium' || (user as any)?.client?.account_type === 'premium';
+        const isPremiumUser = user?.subscriptionTier === 'ultimate' || (user as any)?.account_type === 'premium' || (user as any)?.client?.account_type === 'premium';
 
         const challenges = (await this.challengeRepo.findPublishedChallenges(undefined, skip, limit)) || [];
         const total = typeof this.challengeRepo.countPublishedChallenges === 'function'
@@ -83,7 +83,7 @@ export default class ChallengeService {
         }
 
         const user = await this.userRepo.findById(userId);
-        const isPremiumUser = (user as any)?.account_type === 'premium' || (user as any)?.client?.account_type === 'premium';
+        const isPremiumUser = user?.subscriptionTier === 'ultimate' || (user as any)?.account_type === 'premium' || (user as any)?.client?.account_type === 'premium';
         const isLocked = challenge.accessType === 'premium' && !isPremiumUser;
 
         const enrollment = await this.userChallengeRepo.findByUserAndChallenge(userId, challengeId);
@@ -109,10 +109,10 @@ export default class ChallengeService {
         }
 
         const user = await this.userRepo.findById(userId);
-        const isPremiumUser = (user as any)?.account_type === 'premium' || (user as any)?.client?.account_type === 'premium';
+        const isPremiumUser = user?.subscriptionTier === 'ultimate' || (user as any)?.account_type === 'premium' || (user as any)?.client?.account_type === 'premium';
 
         if (challenge.accessType === 'premium' && !isPremiumUser) {
-            throw new Error('Upgrade to Premium to access this challenge');
+            throw new Error('Upgrade to Ultimate to access this challenge');
         }
 
         const existing = await this.userChallengeRepo.findByUserAndChallenge(userId, challengeId);
