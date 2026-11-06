@@ -44,10 +44,12 @@ export default class SubscriptionService {
             isCurrent: plan.id === currentTier,
         }));
 
+        const subscriptionStatus = currentTier === 'standard' ? 'active' : (user?.subscriptionStatus || 'active');
+
         return {
             plans: plansFormatted,
             currentTier,
-            subscriptionStatus: user?.subscriptionStatus || 'active',
+            subscriptionStatus,
             activeGateway: this.paymentGateway.name,
         };
     }
@@ -61,15 +63,19 @@ export default class SubscriptionService {
         const currentTier = user?.subscriptionTier || 'standard';
         const planDetails = PLANS[currentTier] || PLANS.standard;
 
+        // On the standard free tier, account access is always active
+        const status = currentTier === 'standard' ? 'active' : (subscription?.status || user?.subscriptionStatus || 'active');
+
         return {
             tier: currentTier,
-            status: subscription?.status || user?.subscriptionStatus || 'active',
+            status,
             plan: planDetails,
             gateway: subscription?.gateway || this.paymentGateway.name,
             subscriptionDetails: subscription ? {
                 gateway: subscription.gateway || this.paymentGateway.name,
                 gatewayCustomerId: subscription.gatewayCustomerId || subscription.stripeCustomerId,
                 gatewaySubscriptionId: subscription.gatewaySubscriptionId || subscription.stripeSubscriptionId,
+                status: subscription.status,
                 currentPeriodStart: subscription.currentPeriodStart,
                 currentPeriodEnd: subscription.currentPeriodEnd,
                 cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
@@ -152,7 +158,7 @@ export default class SubscriptionService {
 
         await this.userRepo.update(userId, {
             subscriptionTier: 'standard',
-            subscriptionStatus: 'canceled',
+            subscriptionStatus: 'active',
         });
 
         return {
@@ -238,7 +244,7 @@ export default class SubscriptionService {
                     } else if (status === 'canceled') {
                         await this.userRepo.update(targetUserId, {
                             subscriptionTier: 'standard',
-                            subscriptionStatus: 'canceled',
+                            subscriptionStatus: 'active',
                         });
                     }
 
@@ -268,7 +274,7 @@ export default class SubscriptionService {
 
                     await this.userRepo.update(targetUserId, {
                         subscriptionTier: 'standard',
-                        subscriptionStatus: 'canceled',
+                        subscriptionStatus: 'active',
                     });
 
                     console.log(`[SubscriptionService] Reverted user ${targetUserId} to standard tier upon cancellation`);
