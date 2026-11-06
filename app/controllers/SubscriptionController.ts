@@ -66,7 +66,7 @@ export default class SubscriptionController {
             const result = await this.subscriptionService.handleWebhook(req.body, signature, req.headers);
             res.status(200).json(result);
         } catch (error: any) {
-            console.error('[SubscriptionController] Webhook error:', error.message);
+            console.error('[SubscriptionController] Webhook error:', error.stack || error.message || error);
             res.status(400).send(`Webhook Error: ${error.message}`);
         }
     };

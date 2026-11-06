@@ -151,26 +151,36 @@ export class StripePaymentGateway implements IPaymentGateway {
         switch (event.type) {
             case 'invoice.payment_succeeded': {
                 const invoice = event.data.object;
-                const subscriptionId = invoice.subscription;
-                const customerId = invoice.customer;
+                const subscriptionId =
+                    (typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id) ||
+                    invoice.parent?.subscription_details?.subscription ||
+                    invoice.lines?.data?.[0]?.parent?.subscription_item_details?.subscription;
+                const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
 
-                let userId: string | undefined;
-                let planId: SubscriptionTier | undefined = 'professional';
-                let periodStart: Date | undefined;
-                let periodEnd: Date | undefined;
+                let userId: string | undefined =
+                    invoice.parent?.subscription_details?.metadata?.userId ||
+                    invoice.lines?.data?.[0]?.metadata?.userId ||
+                    invoice.metadata?.userId;
+                let planId: SubscriptionTier | undefined =
+                    (invoice.parent?.subscription_details?.metadata?.planId as SubscriptionTier) ||
+                    (invoice.lines?.data?.[0]?.metadata?.planId as SubscriptionTier) ||
+                    (invoice.metadata?.planId as SubscriptionTier) ||
+                    'professional';
+                let periodStart: Date | undefined = invoice.period_start ? new Date(invoice.period_start * 1000) : undefined;
+                let periodEnd: Date | undefined = invoice.period_end ? new Date(invoice.period_end * 1000) : undefined;
                 let cancelAtPeriodEnd = false;
 
-                if (subscriptionId) {
+                if (subscriptionId && !userId) {
                     try {
                         const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
                         userId = stripeSub.metadata?.userId;
-                        planId = (stripeSub.metadata?.planId as SubscriptionTier) || 'professional';
+                        planId = (stripeSub.metadata?.planId as SubscriptionTier) || planId || 'professional';
                         periodStart = (stripeSub as any).current_period_start
                             ? new Date((stripeSub as any).current_period_start * 1000)
-                            : new Date();
+                            : (periodStart || new Date());
                         periodEnd = (stripeSub as any).current_period_end
                             ? new Date((stripeSub as any).current_period_end * 1000)
-                            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+                            : (periodEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
                         cancelAtPeriodEnd = stripeSub.cancel_at_period_end || false;
                     } catch (e: any) {
                         console.warn('[StripePaymentGateway] Could not retrieve subscription during invoice success:', e.message);
@@ -196,6 +206,7 @@ export class StripePaymentGateway implements IPaymentGateway {
                 const userId = subscription.metadata?.userId;
                 const planId = (subscription.metadata?.planId as SubscriptionTier) || 'professional';
                 const status = subscription.status;
+                const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
 
                 const periodStart = subscription.current_period_start
                     ? new Date(subscription.current_period_start * 1000)
@@ -207,7 +218,7 @@ export class StripePaymentGateway implements IPaymentGateway {
                 return {
                     eventType: 'subscription_updated',
                     userId,
-                    customerId: subscription.customer,
+                    customerId,
                     subscriptionId: subscription.id,
                     planId,
                     status: status as any,
@@ -220,10 +231,11 @@ export class StripePaymentGateway implements IPaymentGateway {
 
             case 'customer.subscription.deleted': {
                 const subscription = event.data.object;
+                const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
                 return {
                     eventType: 'subscription_canceled',
                     userId: subscription.metadata?.userId,
-                    customerId: subscription.customer,
+                    customerId,
                     subscriptionId: subscription.id,
                     status: 'canceled',
                     cancelAtPeriodEnd: true,
@@ -233,10 +245,14 @@ export class StripePaymentGateway implements IPaymentGateway {
 
             case 'invoice.payment_failed': {
                 const invoice = event.data.object;
+                const subscriptionId =
+                    (typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id) ||
+                    invoice.parent?.subscription_details?.subscription;
+                const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
                 return {
                     eventType: 'payment_failed',
-                    customerId: invoice.customer,
-                    subscriptionId: invoice.subscription,
+                    customerId,
+                    subscriptionId,
                     status: 'past_due',
                     rawEvent: event,
                 };

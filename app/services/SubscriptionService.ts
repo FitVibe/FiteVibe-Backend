@@ -13,8 +13,6 @@ export interface PaymentInitResponse {
      * Generic client payload for the mobile SDK (Stripe, PayPal, etc.)
      */
     clientPayload: Record<string, any>;
-    // Generic index signature for backward compatibility
-    [key: string]: any;
 }
 
 export type PaymentSheetResponse = PaymentInitResponse;
@@ -129,8 +127,6 @@ export default class SubscriptionService {
             customerId: initResult.customerId,
             subscriptionId: initResult.subscriptionId,
             clientPayload: initResult.clientPayload,
-            // Spreads gateway-specific keys (paymentIntentClientSecret, etc.) for client convenience
-            ...initResult.clientPayload,
         };
     }
 
@@ -224,20 +220,27 @@ export default class SubscriptionService {
                 if (subDoc) {
                     const targetUserId = subDoc.userId.toString();
                     const isStillActive = status === 'active' || status === 'trialing';
-                    const targetTier = isStillActive ? (planId || subDoc.tier) : 'standard';
+                    const targetTier = isStillActive ? (planId || subDoc.tier) : (status === 'canceled' ? 'standard' : (planId || subDoc.tier));
 
                     await this.subscriptionRepo.update(subDoc._id!, {
-                        status: status || 'active',
+                        status: status || subDoc.status,
                         tier: targetTier,
-                        currentPeriodStart: periodStart,
-                        currentPeriodEnd: periodEnd,
-                        cancelAtPeriodEnd: cancelAtPeriodEnd || false,
+                        currentPeriodStart: periodStart || subDoc.currentPeriodStart,
+                        currentPeriodEnd: periodEnd || subDoc.currentPeriodEnd,
+                        cancelAtPeriodEnd: cancelAtPeriodEnd !== undefined ? cancelAtPeriodEnd : subDoc.cancelAtPeriodEnd,
                     });
 
-                    await this.userRepo.update(targetUserId, {
-                        subscriptionTier: targetTier,
-                        subscriptionStatus: status,
-                    });
+                    if (isStillActive) {
+                        await this.userRepo.update(targetUserId, {
+                            subscriptionTier: targetTier,
+                            subscriptionStatus: 'active',
+                        });
+                    } else if (status === 'canceled') {
+                        await this.userRepo.update(targetUserId, {
+                            subscriptionTier: 'standard',
+                            subscriptionStatus: 'canceled',
+                        });
+                    }
 
                     console.log(`[SubscriptionService] Updated subscription status to ${status} for user ${targetUserId}`);
                 }
